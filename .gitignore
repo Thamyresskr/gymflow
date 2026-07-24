@@ -56,3 +56,7 @@ frontend/dist/
 
 .DS_Store
 Thumbs.db
+
+# Logs da aplicação
+logs/
+*.log
