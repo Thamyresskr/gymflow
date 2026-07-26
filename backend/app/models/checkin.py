@@ -14,16 +14,18 @@ if TYPE_CHECKING:
 
 class Checkin(Base):
     """
-    Representa um registro de entrada e saída de um usuário na academia.
+    Modelo ORM que representa um registro de entrada e saída de um usuário.
 
-    Cada registro corresponde a uma permanência do usuário dentro da academia.
+    Cada registro corresponde a uma permanência do usuário na academia,
+    contendo o horário de entrada, o horário de saída (quando existente)
+    e o relacionamento com o usuário responsável pelo check-in.
     """
 
     __tablename__ = "checkins"
 
-    # ==========================
+    # ==========================================================
     # Identificação
-    # ==========================
+    # ==========================================================
 
     id: Mapped[int] = mapped_column(
         Integer,
@@ -31,9 +33,9 @@ class Checkin(Base):
         index=True,
     )
 
-    # ==========================
+    # ==========================================================
     # Relacionamento
-    # ==========================
+    # ==========================================================
 
     user_id: Mapped[int] = mapped_column(
         Integer,
@@ -45,11 +47,12 @@ class Checkin(Base):
     usuario: Mapped["User"] = relationship(
         "User",
         back_populates="checkins",
+        # lazy="selectin",  # Opcional.
     )
 
-    # ==========================
+    # ==========================================================
     # Controle de acesso
-    # ==========================
+    # ==========================================================
 
     checkin_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -64,11 +67,15 @@ class Checkin(Base):
         index=True,
     )
 
-    # ==========================
+    # ==========================================================
     # Representação
-    # ==========================
+    # ==========================================================
 
     def __repr__(self) -> str:
+        """
+        Retorna uma representação textual resumida do check-in.
+        """
+
         return (
             f"Checkin("
             f"id={self.id}, "

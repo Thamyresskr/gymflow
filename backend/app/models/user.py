@@ -15,10 +15,10 @@ if TYPE_CHECKING:
 
 class TipoUsuario(str, Enum):
     """
-    Perfis permitidos dentro da aplicação.
+    Perfis de usuários permitidos na aplicação.
 
     O uso de Enum garante que apenas valores válidos
-    possam ser atribuídos ao perfil do usuário.
+    possam ser atribuídos ao perfil de um usuário.
     """
 
     ADMIN = "admin"
@@ -28,17 +28,18 @@ class TipoUsuario(str, Enum):
 
 class User(Base):
     """
-    Modelo responsável por representar os usuários da aplicação.
+    Modelo ORM que representa um usuário da aplicação.
 
-    Cada objeto desta classe corresponde a um registro da tabela
-    'users' no banco de dados.
+    Armazena os dados cadastrais, credenciais de autenticação,
+    perfil de acesso, informações complementares e o relacionamento
+    com os check-ins realizados.
     """
 
     __tablename__ = "users"
 
-    # ==========================
+    # ==========================================================
     # Identificação
-    # ==========================
+    # ==========================================================
 
     id: Mapped[int] = mapped_column(
         Integer,
@@ -63,9 +64,9 @@ class User(Base):
         nullable=False,
     )
 
-    # ==========================
+    # ==========================================================
     # Perfil
-    # ==========================
+    # ==========================================================
 
     tipo: Mapped[TipoUsuario] = mapped_column(
         SQLEnum(TipoUsuario, name="tipo_usuario"),
@@ -73,9 +74,9 @@ class User(Base):
         nullable=False,
     )
 
-    # ==========================
+    # ==========================================================
     # Dados complementares
-    # ==========================
+    # ==========================================================
 
     matricula: Mapped[str | None] = mapped_column(
         String(20),
@@ -94,9 +95,9 @@ class User(Base):
         nullable=False,
     )
 
-    # ==========================
+    # ==========================================================
     # Auditoria
-    # ==========================
+    # ==========================================================
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -111,21 +112,26 @@ class User(Base):
         nullable=False,
     )
 
-    # ==========================
+    # ==========================================================
     # Relacionamentos
-    # ==========================
+    # ==========================================================
 
     checkins: Mapped[list["Checkin"]] = relationship(
         "Checkin",
         back_populates="usuario",
         cascade="all, delete-orphan",
+        # lazy="selectin",  # Opcional para otimizar carregamento.
     )
 
-    # ==========================
+    # ==========================================================
     # Representação
-    # ==========================
+    # ==========================================================
 
     def __repr__(self) -> str:
+        """
+        Retorna uma representação textual resumida do usuário.
+        """
+
         return (
             f"User("
             f"id={self.id}, "

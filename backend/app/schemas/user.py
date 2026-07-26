@@ -3,11 +3,25 @@ Schemas relacionados aos usuários.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StringConstraints,
+)
 
 from app.models.user import TipoUsuario
+
+
+Telefone = Annotated[
+    str,
+    StringConstraints(
+        pattern=r"^\d{10,11}$",
+    ),
+]
 
 
 class UserBase(BaseModel):
@@ -31,10 +45,10 @@ class UserBase(BaseModel):
         examples=["joao@email.com"],
     )
 
-    telefone: Optional[str] = Field(
+    telefone: Telefone | None = Field(
         default=None,
         title="Telefone",
-        description="Telefone para contato.",
+        description="Telefone para contato (10 ou 11 dígitos).",
         examples=["11987654321"],
     )
 
@@ -52,7 +66,7 @@ class UserCreate(UserBase):
         examples=["Senha@123"],
     )
 
-    matricula: Optional[str] = Field(
+    matricula: str | None = Field(
         default=None,
         title="Matrícula",
         description="Número de matrícula do aluno, quando aplicável.",
@@ -101,13 +115,13 @@ class UserLogin(BaseModel):
     )
 
 
-class UserUpdate(BaseModel):
+class UserUpdateBase(BaseModel):
     """
-    Dados utilizados para atualização parcial do usuário.
+    Campos básicos utilizados na atualização do usuário.
     Todos os campos são opcionais.
     """
 
-    nome: Optional[str] = Field(
+    nome: str | None = Field(
         default=None,
         title="Nome",
         description="Nome completo.",
@@ -116,28 +130,34 @@ class UserUpdate(BaseModel):
         examples=["João Pedro da Silva"],
     )
 
-    email: Optional[EmailStr] = Field(
+    email: EmailStr | None = Field(
         default=None,
         title="E-mail",
         description="Novo e-mail do usuário.",
         examples=["novo@email.com"],
     )
 
-    telefone: Optional[str] = Field(
+    telefone: Telefone | None = Field(
         default=None,
         title="Telefone",
         description="Telefone atualizado.",
         examples=["11999998888"],
     )
 
-    matricula: Optional[str] = Field(
+
+class UserUpdate(UserUpdateBase):
+    """
+    Dados utilizados para atualização do usuário.
+    """
+
+    matricula: str | None = Field(
         default=None,
         title="Matrícula",
         description="Nova matrícula.",
         examples=["202600001"],
     )
 
-    ativo: Optional[bool] = Field(
+    ativo: bool | None = Field(
         default=None,
         title="Status",
         description="Indica se o usuário está ativo.",
@@ -150,6 +170,28 @@ class UserUpdate(BaseModel):
                 "telefone": "11999998888"
             }
         }
+    )
+
+
+class UserPasswordUpdate(BaseModel):
+    """
+    Dados utilizados para alteração da senha.
+    """
+
+    senha_atual: str = Field(
+        ...,
+        title="Senha Atual",
+        description="Senha atual do usuário.",
+        min_length=6,
+        examples=["Senha@123"],
+    )
+
+    nova_senha: str = Field(
+        ...,
+        title="Nova Senha",
+        description="Nova senha do usuário.",
+        min_length=6,
+        examples=["NovaSenha@123"],
     )
 
 
@@ -172,7 +214,7 @@ class UserResponse(UserBase):
         examples=["ALUNO"],
     )
 
-    matricula: Optional[str] = Field(
+    matricula: str | None = Field(
         default=None,
         title="Matrícula",
         description="Matrícula do usuário.",

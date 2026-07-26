@@ -1,11 +1,11 @@
 """
-Camada de acesso a dados (CRUD) para Usuários.
+Camada de acesso a dados (CRUD) para usuários.
 
 Responsabilidades:
-- Persistir usuários
-- Buscar usuários
-- Atualizar usuários
-- Remover usuários
+- Persistir usuários.
+- Consultar usuários.
+- Atualizar usuários.
+- Remover usuários.
 """
 
 from sqlalchemy.orm import Session
@@ -20,7 +20,14 @@ def get_user_by_id(
     user_id: int,
 ) -> User | None:
     """
-    Busca um usuário pelo ID.
+    Busca um usuário pelo identificador.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        user_id: Identificador do usuário.
+
+    Returns:
+        User | None: Usuário encontrado ou None.
     """
 
     return (
@@ -36,6 +43,13 @@ def get_user_by_email(
 ) -> User | None:
     """
     Busca um usuário pelo e-mail.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        email: Endereço de e-mail.
+
+    Returns:
+        User | None: Usuário encontrado ou None.
     """
 
     return (
@@ -50,11 +64,13 @@ def get_all_users(
 ) -> list[User]:
     """
     Retorna todos os usuários cadastrados.
+
+    Os registros são ordenados alfabeticamente pelo nome.
     """
 
     return (
         db.query(User)
-        .order_by(User.nome)
+        .order_by(User.nome.asc())
         .all()
     )
 
@@ -65,6 +81,13 @@ def create_user(
 ) -> User:
     """
     Cria um novo usuário.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        user_data: Dados do novo usuário.
+
+    Returns:
+        User: Usuário persistido.
     """
 
     user = User(
@@ -78,6 +101,10 @@ def create_user(
     )
 
     db.add(user)
+
+    # Gera o ID antes do commit
+    db.flush()
+
     db.commit()
     db.refresh(user)
 
@@ -89,9 +116,19 @@ def update_user(
     user: User,
 ) -> User:
     """
-    Atualiza um usuário.
+    Persiste alterações realizadas em um usuário.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        user: Usuário atualizado.
+
+    Returns:
+        User: Usuário persistido.
     """
 
+    db.add(user)
+
+    db.flush()
     db.commit()
     db.refresh(user)
 
@@ -104,6 +141,10 @@ def delete_user(
 ) -> None:
     """
     Remove um usuário.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        user: Usuário a ser removido.
     """
 
     db.delete(user)

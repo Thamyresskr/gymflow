@@ -1,5 +1,10 @@
 """
-Regras de negócio relacionadas ao Dashboard.
+Serviços relacionados ao Dashboard.
+
+Responsabilidades:
+- Consolidar os indicadores do Dashboard.
+- Orquestrar consultas da camada CRUD.
+- Montar os objetos de resposta da API.
 """
 
 from sqlalchemy.orm import Session
@@ -22,7 +27,18 @@ def get_dashboard(
     db: Session,
 ) -> DashboardResponse:
     """
-    Monta todos os indicadores do Dashboard.
+    Obtém os indicadores consolidados do Dashboard.
+
+    Reúne as principais métricas da aplicação, incluindo ocupação
+    atual, quantidade de check-ins e check-outs realizados no dia,
+    tempo médio de permanência e a lista dos últimos check-ins.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+
+    Returns:
+        DashboardResponse: Objeto contendo o resumo dos indicadores
+        e os últimos check-ins registrados.
     """
 
     resumo = DashboardResumo(

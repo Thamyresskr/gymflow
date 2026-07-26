@@ -4,9 +4,11 @@ Arquivo principal da aplicação GymFlow.
 Responsabilidades:
 - Inicializar a API
 - Registrar as rotas
-- Criar as tabelas do banco de dados
-- Registrar os handlers globais de exceções
+- Configurar middlewares
+- Registrar handlers globais de exceções
 """
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +18,7 @@ from app.core.database import Base, engine
 from app.core.exception_handlers import register_exception_handlers
 from app.core.logger import logger
 from app.core.middleware import LoggingMiddleware
+from app.core.openapi import custom_openapi
 
 # ============================================================================
 # Modelos
@@ -33,14 +36,6 @@ from app.routes.checkins import router as checkin_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.health import router as health_router
 from app.routes.users import router as user_router
-
-# ============================================================================
-# Banco de Dados
-# ============================================================================
-
-Base.metadata.create_all(bind=engine)
-
-logger.info("Banco de dados inicializado.")
 
 # ============================================================================
 # OpenAPI / Swagger
@@ -72,6 +67,28 @@ tags_metadata = [
         "description": "Indicadores e estatísticas de ocupação da academia.",
     },
 ]
+
+# ============================================================================
+# Lifespan
+# ============================================================================
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Executado durante a inicialização e encerramento da aplicação.
+    """
+
+    logger.info("Inicializando aplicação...")
+
+    Base.metadata.create_all(bind=engine)
+
+    logger.info("Banco de dados inicializado.")
+
+    yield
+
+    logger.info("%s encerrada.", settings.APP_NAME)
+
 
 # ============================================================================
 # Aplicação
@@ -111,16 +128,25 @@ Disponibilizar uma API segura, documentada e preparada para integração com apl
     version=settings.VERSION,
     contact={
         "name": "Equipe GymFlow",
+        "url": "https://github.com/Thamyresskr/gymflow",
         "email": "contato@gymflow.com",
     },
     license_info={
-        "name": "MIT License",
+        "name": "MIT",
+        "identifier": "MIT",
     },
     openapi_tags=tags_metadata,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
+
+# ============================================================================
+# OpenAPI Personalizado
+# ============================================================================
+
+app.openapi = lambda: custom_openapi(app)
 
 logger.info("%s iniciada com sucesso.", settings.APP_NAME)
 
@@ -186,10 +212,10 @@ logger.info("%d grupos de rotas registrados.", len(routers))
     description="""
 Verifica se a API está em execução.
 
-Este endpoint pode ser utilizado para testes rápidos
-e monitoramento da aplicação.
+Este endpoint pode ser utilizado para monitoramento,
+testes rápidos e verificação de disponibilidade da aplicação.
 """,
-    response_description="Mensagem de status da API.",
+    response_description="Informações gerais da API.",
 )
 async def home():
     """
@@ -199,7 +225,11 @@ async def home():
     logger.info("Endpoint '/' acessado.")
 
     return {
-        "message": f"{settings.APP_NAME} funcionando!"
+        "application": settings.APP_NAME,
+        "version": settings.VERSION,
+        "status": "online",
+        "docs": "/docs",
+        "redoc": "/redoc",
     }
 
 
@@ -217,7 +247,7 @@ def listar_rotas():
 
     print("\nRotas registradas:\n")
 
-    for route in sorted(app.routes, key=lambda r: r.path):
+    for route in sorted(app.routes, key=lambda route: route.path):
         methods = ",".join(sorted(route.methods))
         print(f"{route.path:35} {methods}")
 

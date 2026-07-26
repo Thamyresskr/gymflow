@@ -16,6 +16,7 @@ class DashboardResumo(BaseModel):
         ...,
         title="Ocupação Atual",
         description="Quantidade de usuários presentes na academia no momento.",
+        ge=0,
         examples=[18],
     )
 
@@ -23,6 +24,7 @@ class DashboardResumo(BaseModel):
         ...,
         title="Check-ins Hoje",
         description="Quantidade de check-ins realizados na data atual.",
+        ge=0,
         examples=[42],
     )
 
@@ -30,6 +32,7 @@ class DashboardResumo(BaseModel):
         ...,
         title="Check-outs Hoje",
         description="Quantidade de check-outs realizados na data atual.",
+        ge=0,
         examples=[35],
     )
 
@@ -37,6 +40,7 @@ class DashboardResumo(BaseModel):
         ...,
         title="Tempo Médio de Permanência",
         description="Tempo médio de permanência dos usuários na academia, em minutos.",
+        ge=0,
         examples=[87.5],
     )
 
@@ -68,15 +72,18 @@ class DashboardUltimoCheckin(BaseModel):
         ...,
         title="Entrada",
         description="Data e hora em que o usuário realizou o check-in.",
-        examples=["2026-07-24T08:30:00"],
+        examples=["2026-07-24T08:30:00Z"],
     )
 
     saida: datetime | None = Field(
         default=None,
         title="Saída",
-        description="Data e hora do check-out. Será nulo enquanto o usuário permanecer na academia.",
+        description=(
+            "Data e hora do check-out. "
+            "Será nulo enquanto o usuário permanecer na academia."
+        ),
         examples=[
-            "2026-07-24T09:45:00",
+            "2026-07-24T09:45:00Z",
             None,
         ],
     )
@@ -86,8 +93,8 @@ class DashboardUltimoCheckin(BaseModel):
         json_schema_extra={
             "example": {
                 "usuario": "Aluno Teste",
-                "entrada": "2026-07-24T08:30:00",
-                "saida": "2026-07-24T09:45:00",
+                "entrada": "2026-07-24T08:30:00Z",
+                "saida": "2026-07-24T09:45:00Z",
             }
         },
     )
@@ -123,8 +130,8 @@ class DashboardResponse(BaseModel):
                 "ultimos_checkins": [
                     {
                         "usuario": "Aluno Teste",
-                        "entrada": "2026-07-24T08:30:00",
-                        "saida": "2026-07-24T09:45:00",
+                        "entrada": "2026-07-24T08:30:00Z",
+                        "saida": "2026-07-24T09:45:00Z",
                     }
                 ],
             }

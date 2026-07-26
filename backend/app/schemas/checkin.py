@@ -19,7 +19,7 @@ class CheckinResponse(BaseModel):
     id: int = Field(
         ...,
         title="ID",
-        description="Identificador único do check-in.",
+        description="Identificador único do registro de check-in.",
         examples=[1],
     )
 
@@ -34,7 +34,7 @@ class CheckinResponse(BaseModel):
         ...,
         title="Horário do Check-in",
         description="Data e hora em que o usuário realizou o check-in.",
-        examples=["2026-07-25T08:15:32"],
+        examples=["2026-07-25T08:15:32Z"],
     )
 
     checkout_time: datetime | None = Field(
@@ -45,7 +45,7 @@ class CheckinResponse(BaseModel):
             "Permanece nulo enquanto o usuário estiver na academia."
         ),
         examples=[
-            "2026-07-25T09:47:10",
+            "2026-07-25T09:47:10Z",
             None,
         ],
     )
@@ -56,8 +56,8 @@ class CheckinResponse(BaseModel):
             "example": {
                 "id": 1,
                 "user_id": 5,
-                "checkin_time": "2026-07-25T08:15:32",
-                "checkout_time": "2026-07-25T09:47:10",
+                "checkin_time": "2026-07-25T08:15:32Z",
+                "checkout_time": "2026-07-25T09:47:10Z",
             }
         },
     )

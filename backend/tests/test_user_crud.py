@@ -16,11 +16,11 @@ from app.schemas.user import UserCreate
 
 def criar_usuario(
     db_session,
-    nome,
-    email,
-    matricula,
-    telefone,
-):
+    nome: str,
+    email: str,
+    matricula: str,
+    telefone: str,
+) -> User:
     """
     Cria um usuário para utilização nos testes.
     """
@@ -36,6 +36,7 @@ def criar_usuario(
     )
 
     db_session.add(user)
+    db_session.flush()
     db_session.commit()
     db_session.refresh(user)
 
@@ -55,13 +56,17 @@ def test_create_user(db_session):
         telefone="11999999999",
     )
 
-    user = create_user(db_session, user_data)
+    user = create_user(
+        db_session,
+        user_data,
+    )
 
     assert user.id is not None
     assert user.nome == user_data.nome
     assert user.email == user_data.email
     assert user.tipo == TipoUsuario.ALUNO
     assert user.ativo is True
+    assert user.senha_hash != user_data.senha
 
 
 def test_get_user_by_id(db_session):
@@ -77,7 +82,10 @@ def test_get_user_by_id(db_session):
         "11988888888",
     )
 
-    result = get_user_by_id(db_session, user.id)
+    result = get_user_by_id(
+        db_session,
+        user.id,
+    )
 
     assert result is not None
     assert result.id == user.id
@@ -128,9 +136,13 @@ def test_get_all_users(db_session):
         "11955555555",
     )
 
-    users = get_all_users(db_session)
+    users = get_all_users(
+        db_session,
+    )
 
     assert len(users) == 2
+    assert users[0].nome == "Ana"
+    assert users[1].nome == "Bruno"
 
 
 def test_update_user(db_session):
@@ -148,7 +160,10 @@ def test_update_user(db_session):
 
     user.nome = "Carlos Silva"
 
-    updated = update_user(db_session, user)
+    updated = update_user(
+        db_session,
+        user,
+    )
 
     assert updated.nome == "Carlos Silva"
     assert updated.email == "carlos@gymflow.com"
@@ -169,8 +184,14 @@ def test_delete_user(db_session):
 
     user_id = user.id
 
-    delete_user(db_session, user)
+    delete_user(
+        db_session,
+        user,
+    )
 
-    deleted = get_user_by_id(db_session, user_id)
+    deleted = get_user_by_id(
+        db_session,
+        user_id,
+    )
 
     assert deleted is None

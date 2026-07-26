@@ -23,13 +23,15 @@ class ErrorResponse(BaseModel):
         ...,
         title="Status HTTP",
         description="Código HTTP retornado pela API.",
+        ge=100,
+        le=599,
         examples=[400],
     )
 
     code: str | None = Field(
         default=None,
         title="Código do Erro",
-        description="Código interno do erro.",
+        description="Código interno utilizado para identificação do erro.",
         examples=["INVALID_CREDENTIALS"],
     )
 

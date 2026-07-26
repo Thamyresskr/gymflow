@@ -2,8 +2,8 @@
 Camada de acesso a dados (CRUD) para check-ins.
 
 Responsabilidades:
-- Persistir check-ins;
-- Buscar check-ins;
+- Persistir check-ins.
+- Consultar check-ins.
 - Atualizar check-ins.
 """
 
@@ -19,14 +19,14 @@ def create_checkin(
     checkin: Checkin,
 ) -> Checkin:
     """
-    Salva um novo check-in no banco de dados.
+    Persiste um novo check-in.
 
     Args:
-        db: Sessão do banco de dados.
-        checkin: Check-in a ser persistido.
+        db: Sessão ativa do banco de dados.
+        checkin: Instância do check-in a ser persistida.
 
     Returns:
-        Check-in salvo.
+        Checkin: Check-in criado.
     """
 
     db.add(checkin)
@@ -44,11 +44,11 @@ def get_open_checkin(
     Retorna o check-in em aberto de um usuário.
 
     Args:
-        db: Sessão do banco de dados.
+        db: Sessão ativa do banco de dados.
         user_id: Identificador do usuário.
 
     Returns:
-        Check-in em aberto ou None.
+        Checkin | None: Check-in ativo ou ``None`` caso não exista.
     """
 
     return (
@@ -69,11 +69,11 @@ def get_checkin_by_id(
     Busca um check-in pelo identificador.
 
     Args:
-        db: Sessão do banco de dados.
+        db: Sessão ativa do banco de dados.
         checkin_id: Identificador do check-in.
 
     Returns:
-        Check-in encontrado ou None.
+        Checkin | None: Check-in encontrado ou ``None``.
     """
 
     return (
@@ -89,11 +89,13 @@ def get_all_checkins(
     """
     Retorna o histórico completo de check-ins.
 
+    Os registros são ordenados do mais recente para o mais antigo.
+
     Args:
-        db: Sessão do banco de dados.
+        db: Sessão ativa do banco de dados.
 
     Returns:
-        Lista de check-ins ordenada do mais recente para o mais antigo.
+        list[Checkin]: Lista de check-ins.
     """
 
     return (
@@ -110,10 +112,10 @@ def get_active_checkins(
     Retorna todos os check-ins ativos.
 
     Args:
-        db: Sessão do banco de dados.
+        db: Sessão ativa do banco de dados.
 
     Returns:
-        Lista de check-ins sem horário de checkout.
+        list[Checkin]: Lista de check-ins sem horário de check-out.
     """
 
     return (
@@ -129,14 +131,14 @@ def update_checkin(
     checkin: Checkin,
 ) -> Checkin:
     """
-    Atualiza um check-in existente.
+    Persiste alterações realizadas em um check-in.
 
     Args:
-        db: Sessão do banco de dados.
-        checkin: Check-in atualizado.
+        db: Sessão ativa do banco de dados.
+        checkin: Instância do check-in com as alterações.
 
     Returns:
-        Check-in persistido.
+        Checkin: Check-in atualizado.
     """
 
     db.commit()
@@ -150,14 +152,17 @@ def checkout(
     checkin: Checkin,
 ) -> Checkin:
     """
-    Finaliza um check-in registrando a data e hora do checkout.
+    Finaliza um check-in registrando o horário de saída.
+
+    Define o horário de check-out utilizando UTC e persiste
+    a alteração no banco de dados.
 
     Args:
-        db: Sessão do banco de dados.
+        db: Sessão ativa do banco de dados.
         checkin: Check-in a ser finalizado.
 
     Returns:
-        Check-in atualizado.
+        Checkin: Check-in atualizado.
     """
 
     checkin.checkout_time = datetime.now(timezone.utc)

@@ -1,5 +1,10 @@
 """
-Regras de negócio relacionadas à autenticação.
+Serviços relacionados à autenticação.
+
+Responsabilidades:
+- Validar as credenciais do usuário.
+- Gerar o token JWT de autenticação.
+- Registrar eventos de autenticação.
 """
 
 from fastapi import HTTPException, status
@@ -19,16 +24,20 @@ def login_user(
     """
     Autentica um usuário e gera um token JWT.
 
+    Valida as credenciais informadas, registra o evento de login
+    e retorna um token JWT que deverá ser utilizado para autenticar
+    as próximas requisições à API.
+
     Args:
-        db: Sessão do banco de dados.
+        db: Sessão ativa do banco de dados.
         email: E-mail informado pelo usuário.
         senha: Senha informada pelo usuário.
 
     Returns:
-        Token JWT de autenticação.
+        Token: Token JWT utilizado para autenticação.
 
     Raises:
-        HTTPException: Caso as credenciais sejam inválidas.
+        HTTPException: Caso as credenciais informadas sejam inválidas.
     """
 
     usuario = authenticate_user(
@@ -39,7 +48,7 @@ def login_user(
 
     if usuario is None:
         logger.warning(
-            "Tentativa de login inválida | email=%s",
+            "Tentativa de login invalida | email=%s",
             email,
         )
 
@@ -56,7 +65,7 @@ def login_user(
     )
 
     logger.info(
-        "Login realizado | usuário=%s | id=%s",
+        "Login realizado | usuario=%s | id=%s",
         usuario.email,
         usuario.id,
     )

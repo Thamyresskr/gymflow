@@ -1,5 +1,11 @@
 """
-Regras de negócio relacionadas aos check-ins.
+Serviços relacionados ao gerenciamento de check-ins.
+
+Responsabilidades:
+- Validar as regras de negócio para check-in e check-out.
+- Garantir a integridade das operações de entrada e saída.
+- Delegar a persistência dos dados para a camada CRUD.
+- Registrar eventos relacionados aos check-ins.
 """
 
 from fastapi import HTTPException, status
@@ -21,14 +27,18 @@ def register_checkin(
     current_user: User,
 ) -> Checkin:
     """
-    Realiza o check-in do usuário.
+    Registra o check-in do usuário autenticado.
+
+    Verifica se o usuário já possui um check-in em aberto. Caso não
+    exista, cria um novo registro de entrada e registra o evento no
+    log da aplicação.
 
     Args:
-        db: Sessão do banco de dados.
+        db: Sessão ativa do banco de dados.
         current_user: Usuário autenticado.
 
     Returns:
-        Check-in criado.
+        Checkin: Registro do check-in criado.
 
     Raises:
         HTTPException: Caso o usuário já possua um check-in em aberto.
@@ -39,9 +49,9 @@ def register_checkin(
         user_id=current_user.id,
     )
 
-    if checkin_aberto:
+    if checkin_aberto is not None:
         logger.warning(
-            "Tentativa de novo check-in com outro em aberto | usuário=%s | id=%s",
+            "Tentativa de novo check-in com outro em aberto | usuario=%s | id=%s",
             current_user.email,
             current_user.id,
         )
@@ -59,7 +69,7 @@ def register_checkin(
     )
 
     logger.info(
-        "Check-in realizado | usuário=%s | id=%s | checkin=%s",
+        "Check-in realizado | usuario=%s | id=%s | checkin=%s",
         current_user.email,
         current_user.id,
         checkin.id,
@@ -74,20 +84,24 @@ def finish_checkin(
     current_user: User,
 ) -> Checkin:
     """
-    Finaliza um check-in.
+    Finaliza um check-in ativo.
+
+    Valida a existência do check-in, verifica se ele pertence ao
+    usuário autenticado e confirma que ainda está em aberto antes
+    de registrar o horário de saída.
 
     Args:
-        db: Sessão do banco de dados.
+        db: Sessão ativa do banco de dados.
         checkin_id: Identificador do check-in.
         current_user: Usuário autenticado.
 
     Returns:
-        Check-in finalizado.
+        Checkin: Registro do check-in atualizado.
 
     Raises:
         HTTPException:
-            - Caso o check-in não exista;
-            - Caso pertença a outro usuário;
+            - Caso o check-in não exista.
+            - Caso pertença a outro usuário.
             - Caso já tenha sido finalizado.
     """
 
@@ -109,7 +123,7 @@ def finish_checkin(
 
     if checkin.user_id != current_user.id:
         logger.warning(
-            "Tentativa de finalizar check-in de outro usuário | usuário=%s | checkin=%s",
+            "Tentativa de finalizar check-in de outro usuario | usuario=%s | checkin=%s",
             current_user.email,
             checkin.id,
         )
@@ -121,7 +135,7 @@ def finish_checkin(
 
     if checkin.checkout_time is not None:
         logger.warning(
-            "Tentativa de finalizar check-in já encerrado | usuário=%s | checkin=%s",
+            "Tentativa de finalizar check-in ja encerrado | usuario=%s | checkin=%s",
             current_user.email,
             checkin.id,
         )
@@ -137,7 +151,7 @@ def finish_checkin(
     )
 
     logger.info(
-        "Checkout realizado | usuário=%s | id=%s | checkin=%s",
+        "Check-out realizado | usuario=%s | id=%s | checkin=%s",
         current_user.email,
         current_user.id,
         checkin.id,

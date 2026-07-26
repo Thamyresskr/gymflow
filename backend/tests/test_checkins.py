@@ -5,6 +5,49 @@ Testes das rotas de check-ins.
 from fastapi import status
 
 
+def criar_segundo_usuario(client):
+    """
+    Cria um segundo usuário para testes de autorização.
+    """
+
+    response = client.post(
+        "/users/",
+        json={
+            "nome": "Outro Usuário",
+            "email": "outro@gymflow.com",
+            "senha": "123456",
+            "matricula": "20269999",
+            "telefone": "11911111111",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    return response
+
+
+def login_segundo_usuario(client):
+    """
+    Realiza login do segundo usuário e retorna o header JWT.
+    """
+
+    response = client.post(
+        "/auth/login",
+        data={
+            "username": "outro@gymflow.com",
+            "password": "123456",
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+    token = response.json()["access_token"]
+
+    return {
+        "Authorization": f"Bearer {token}",
+    }
+
+
 def test_realizar_checkin(client, auth_headers):
     """
     Deve realizar um check-in com sucesso.
@@ -140,28 +183,9 @@ def test_checkout_de_outro_usuario(client, auth_headers):
 
     checkin_id = response.json()["id"]
 
-    client.post(
-        "/users/",
-        json={
-            "nome": "Outro Usuário",
-            "email": "outro@gymflow.com",
-            "senha": "123456",
-        },
-    )
+    criar_segundo_usuario(client)
 
-    login = client.post(
-        "/auth/login",
-        data={
-            "username": "outro@gymflow.com",
-            "password": "123456",
-        },
-    )
-
-    token = login.json()["access_token"]
-
-    outro_header = {
-        "Authorization": f"Bearer {token}"
-    }
+    outro_header = login_segundo_usuario(client)
 
     response = client.put(
         f"/checkins/{checkin_id}/checkout",

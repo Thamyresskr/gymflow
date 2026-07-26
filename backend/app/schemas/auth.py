@@ -2,7 +2,7 @@
 Schemas relacionados à autenticação.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Token(BaseModel):
@@ -13,7 +13,10 @@ class Token(BaseModel):
     access_token: str = Field(
         ...,
         title="Access Token",
-        description="Token JWT utilizado para autenticar as requisições protegidas da API.",
+        description=(
+            "Token JWT utilizado para autenticar as requisições "
+            "protegidas da API."
+        ),
         examples=[
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         ],
@@ -22,12 +25,15 @@ class Token(BaseModel):
     token_type: str = Field(
         default="bearer",
         title="Tipo do Token",
-        description="Tipo do token utilizado na autenticação HTTP Authorization.",
+        description=(
+            "Tipo do token utilizado no cabeçalho "
+            "Authorization da requisição."
+        ),
         examples=["bearer"],
     )
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "access_token": (
                     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -35,4 +41,4 @@ class Token(BaseModel):
                 "token_type": "bearer",
             }
         }
-    }
+    )

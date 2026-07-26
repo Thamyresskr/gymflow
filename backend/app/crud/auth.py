@@ -1,5 +1,5 @@
 """
-CRUD de autenticação.
+Operações de acesso a dados relacionadas à autenticação.
 """
 
 from sqlalchemy.orm import Session
@@ -13,12 +13,23 @@ def authenticate_user(
     db: Session,
     email: str,
     senha: str,
-):
+) -> User | None:
     """
-    Valida usuário e senha.
+    Autentica um usuário utilizando e-mail e senha.
+
+    Localiza o usuário pelo e-mail informado e valida a senha
+    utilizando o mecanismo de verificação configurado na aplicação.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        email: E-mail informado pelo usuário.
+        senha: Senha em texto puro.
+
+    Returns:
+        User | None: Usuário autenticado quando as credenciais são
+        válidas; caso contrário, retorna ``None``.
     """
 
-    logger.info("=" * 60)
     logger.info("Tentativa de login | email=%s", email)
 
     usuario = (
@@ -28,19 +39,16 @@ def authenticate_user(
     )
 
     if usuario is None:
-        logger.warning("Usuário não encontrado.")
-        logger.info("=" * 60)
+        logger.warning(
+            "Usuario nao encontrado | email=%s",
+            email,
+        )
         return None
 
     logger.info(
-        "Usuário encontrado | id=%s | email=%s",
+        "Usuario encontrado | id=%s | email=%s",
         usuario.id,
         usuario.email,
-    )
-
-    logger.info(
-        "Hash armazenado: %s",
-        usuario.senha_hash,
     )
 
     senha_valida = verify_password(
@@ -48,14 +56,17 @@ def authenticate_user(
         usuario.senha_hash,
     )
 
-    logger.info(
-        "Resultado verify_password(): %s",
-        senha_valida,
-    )
-
-    logger.info("=" * 60)
-
     if not senha_valida:
+        logger.warning(
+            "Senha invalida | email=%s",
+            email,
+        )
         return None
+
+    logger.info(
+        "Autenticacao realizada com sucesso | usuario=%s | id=%s",
+        usuario.email,
+        usuario.id,
+    )
 
     return usuario

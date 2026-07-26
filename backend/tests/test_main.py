@@ -1,34 +1,38 @@
+"""
+Testes do arquivo principal da aplicação.
+"""
+
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
-from app.main import app, listar_rotas
+from app.main import app
 
 client = TestClient(app)
 
 
 def test_home():
     """
-    Deve retornar a mensagem de status da API.
+    Deve retornar informações da API.
     """
+
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "message": f"{settings.APP_NAME} funcionando!"
-    }
+
+    data = response.json()
+
+    assert data["application"] == settings.APP_NAME
+    assert data["version"] == settings.VERSION
+    assert data["status"] == "online"
+    assert data["docs"] == "/docs"
+    assert data["redoc"] == "/redoc"
 
 
-def test_listar_rotas(capsys):
+def test_documentacao():
     """
-    Deve listar todas as rotas registradas na aplicação.
+    Deve disponibilizar a documentação Swagger.
     """
-    listar_rotas()
 
-    captured = capsys.readouterr()
+    response = client.get("/docs")
 
-    assert "Rotas registradas" in captured.out
-
-    # Garante que algumas rotas da aplicação foram listadas.
-    assert "/" in captured.out
-    assert "/auth/login" in captured.out
-    assert "/users" in captured.out
+    assert response.status_code == 200
