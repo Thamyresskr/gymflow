@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.checkin import Checkin
 
 
 class TipoUsuario(str, Enum):

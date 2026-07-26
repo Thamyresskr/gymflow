@@ -27,7 +27,31 @@ router = APIRouter(
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Cadastrar usuário",
-    description="Realiza o cadastro de um novo usuário no sistema.",
+    description="""
+Realiza o cadastro de um novo usuário.
+
+### Regras
+
+- O e-mail deve ser único.
+- A senha é armazenada criptografada.
+- O usuário é criado ativo.
+- O perfil inicial é **ALUNO**.
+
+### Autenticação
+
+Não requer autenticação.
+""",
+    responses={
+        201: {
+            "description": "Usuário cadastrado com sucesso."
+        },
+        400: {
+            "description": "Dados inválidos."
+        },
+        409: {
+            "description": "E-mail já cadastrado."
+        },
+    },
 )
 def criar_usuario(
     usuario: UserCreate,
@@ -36,12 +60,7 @@ def criar_usuario(
     """
     Cadastra um novo usuário.
 
-    Regras de negócio:
-    - O e-mail deve ser único.
-    - A senha é armazenada criptografada.
-    - O usuário é criado como ALUNO e ativo.
-
-    Todas as regras são executadas pela camada Service.
+    Todas as regras de negócio são executadas pela camada Service.
     """
 
     return register_user(
@@ -54,7 +73,25 @@ def criar_usuario(
     "/",
     response_model=list[UserResponse],
     summary="Listar usuários",
-    description="Retorna todos os usuários cadastrados. Requer autenticação.",
+    description="""
+Retorna todos os usuários cadastrados.
+
+### Requisitos
+
+- JWT válido.
+
+### Autorização
+
+Necessita autenticação via Bearer Token.
+""",
+    responses={
+        200: {
+            "description": "Lista de usuários retornada com sucesso."
+        },
+        401: {
+            "description": "Usuário não autenticado."
+        },
+    },
 )
 def listar_usuarios(
     db: Session = Depends(get_db),
@@ -62,8 +99,6 @@ def listar_usuarios(
 ) -> list[UserResponse]:
     """
     Lista todos os usuários cadastrados.
-
-    Requer um JWT válido.
     """
 
     return get_all_users(db=db)

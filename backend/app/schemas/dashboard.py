@@ -9,52 +9,88 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class DashboardResumo(BaseModel):
     """
-    Indicadores principais do dashboard.
+    Indicadores consolidados do Dashboard.
     """
 
     ocupacao_atual: int = Field(
-        description="Quantidade de usuários presentes na academia.",
-        json_schema_extra={"example": 18},
+        ...,
+        title="Ocupação Atual",
+        description="Quantidade de usuários presentes na academia no momento.",
+        examples=[18],
     )
 
     checkins_hoje: int = Field(
-        description="Quantidade de check-ins realizados hoje.",
-        json_schema_extra={"example": 42},
+        ...,
+        title="Check-ins Hoje",
+        description="Quantidade de check-ins realizados na data atual.",
+        examples=[42],
     )
 
     checkouts_hoje: int = Field(
-        description="Quantidade de check-outs realizados hoje.",
-        json_schema_extra={"example": 35},
+        ...,
+        title="Check-outs Hoje",
+        description="Quantidade de check-outs realizados na data atual.",
+        examples=[35],
     )
 
     tempo_medio_permanencia: float = Field(
-        description="Tempo médio de permanência em minutos.",
-        json_schema_extra={"example": 87.5},
+        ...,
+        title="Tempo Médio de Permanência",
+        description="Tempo médio de permanência dos usuários na academia, em minutos.",
+        examples=[87.5],
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "ocupacao_atual": 18,
+                "checkins_hoje": 42,
+                "checkouts_hoje": 35,
+                "tempo_medio_permanencia": 87.5,
+            }
+        }
     )
 
 
 class DashboardUltimoCheckin(BaseModel):
     """
-    Representa um registro exibido na lista dos últimos check-ins.
+    Representa um dos últimos check-ins exibidos no Dashboard.
     """
 
     usuario: str = Field(
+        ...,
+        title="Usuário",
         description="Nome do usuário.",
-        json_schema_extra={"example": "Aluno Teste"},
+        examples=["Aluno Teste"],
     )
 
     entrada: datetime = Field(
-        description="Data e hora do check-in.",
-        json_schema_extra={"example": "2026-07-24T08:30:00Z"},
+        ...,
+        title="Entrada",
+        description="Data e hora em que o usuário realizou o check-in.",
+        examples=["2026-07-24T08:30:00"],
     )
 
     saida: datetime | None = Field(
         default=None,
-        description="Data e hora do check-out.",
-        json_schema_extra={"example": "2026-07-24T09:45:00Z"},
+        title="Saída",
+        description="Data e hora do check-out. Será nulo enquanto o usuário permanecer na academia.",
+        examples=[
+            "2026-07-24T09:45:00",
+            None,
+        ],
     )
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "usuario": "Aluno Teste",
+                "entrada": "2026-07-24T08:30:00",
+                "saida": "2026-07-24T09:45:00",
+            }
+        },
+    )
 
 
 class DashboardResponse(BaseModel):
@@ -62,19 +98,35 @@ class DashboardResponse(BaseModel):
     Resposta completa do Dashboard.
     """
 
-    resumo: DashboardResumo
-
-    ultimos_checkins: list[DashboardUltimoCheckin] = Field(
-        description="Lista dos últimos check-ins registrados.",
-        json_schema_extra={
-            "example": [
-                {
-                    "usuario": "Aluno Teste",
-                    "entrada": "2026-07-24T08:30:00Z",
-                    "saida": "2026-07-24T09:45:00Z",
-                }
-            ]
-        },
+    resumo: DashboardResumo = Field(
+        ...,
+        title="Resumo",
+        description="Indicadores gerais da academia.",
     )
 
-    model_config = ConfigDict(from_attributes=True)
+    ultimos_checkins: list[DashboardUltimoCheckin] = Field(
+        ...,
+        title="Últimos Check-ins",
+        description="Lista dos últimos check-ins registrados.",
+    )
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "resumo": {
+                    "ocupacao_atual": 18,
+                    "checkins_hoje": 42,
+                    "checkouts_hoje": 35,
+                    "tempo_medio_permanencia": 87.5,
+                },
+                "ultimos_checkins": [
+                    {
+                        "usuario": "Aluno Teste",
+                        "entrada": "2026-07-24T08:30:00",
+                        "saida": "2026-07-24T09:45:00",
+                    }
+                ],
+            }
+        },
+    )

@@ -33,7 +33,23 @@ router = APIRouter(
     response_model=CheckinResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Realizar check-in",
-    description="Registra a entrada do usuário autenticado na academia.",
+    description="""
+Registra a entrada do usuário autenticado na academia.
+
+### Requisitos
+
+- Usuário autenticado via JWT.
+- Não possuir outro check-in ativo.
+
+### Retorno
+
+Retorna o check-in criado com sucesso.
+""",
+    responses={
+        201: {"description": "Check-in realizado com sucesso."},
+        400: {"description": "O usuário já possui um check-in ativo."},
+        401: {"description": "Usuário não autenticado."},
+    },
 )
 def realizar_checkin(
     db: Session = Depends(get_db),
@@ -52,8 +68,21 @@ def realizar_checkin(
 @router.put(
     "/{checkin_id}/checkout",
     response_model=CheckinResponse,
-    summary="Realizar checkout",
-    description="Finaliza um check-in em aberto.",
+    summary="Realizar check-out",
+    description="""
+Finaliza um check-in em aberto.
+
+### Requisitos
+
+- Usuário autenticado.
+- O check-in deve existir.
+- O check-in deve estar ativo.
+""",
+    responses={
+        200: {"description": "Check-out realizado com sucesso."},
+        401: {"description": "Usuário não autenticado."},
+        404: {"description": "Check-in não encontrado."},
+    },
 )
 def realizar_checkout(
     checkin_id: int,
@@ -75,6 +104,15 @@ def realizar_checkout(
     "/ativos",
     response_model=list[CheckinResponse],
     summary="Listar check-ins ativos",
+    description="""
+Retorna todos os check-ins que ainda não possuem horário de saída.
+
+Necessita autenticação JWT.
+""",
+    responses={
+        200: {"description": "Lista de check-ins ativos."},
+        401: {"description": "Usuário não autenticado."},
+    },
 )
 def listar_checkins_ativos(
     db: Session = Depends(get_db),
@@ -91,6 +129,15 @@ def listar_checkins_ativos(
     "/",
     response_model=list[CheckinResponse],
     summary="Histórico de check-ins",
+    description="""
+Retorna todo o histórico de check-ins registrados no sistema.
+
+Necessita autenticação JWT.
+""",
+    responses={
+        200: {"description": "Histórico retornado com sucesso."},
+        401: {"description": "Usuário não autenticado."},
+    },
 )
 def listar_checkins(
     db: Session = Depends(get_db),

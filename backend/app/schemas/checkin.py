@@ -13,31 +13,51 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class CheckinResponse(BaseModel):
     """
-    Dados retornados pela API após operações de check-in e checkout.
+    Dados retornados pela API após operações de check-in e check-out.
     """
 
     id: int = Field(
-        description="Identificador do check-in.",
+        ...,
+        title="ID",
+        description="Identificador único do check-in.",
         examples=[1],
     )
 
     user_id: int = Field(
-        description="Identificador do usuário.",
+        ...,
+        title="ID do Usuário",
+        description="Identificador do usuário responsável pelo check-in.",
         examples=[5],
     )
 
     checkin_time: datetime = Field(
+        ...,
+        title="Horário do Check-in",
         description="Data e hora em que o usuário realizou o check-in.",
+        examples=["2026-07-25T08:15:32"],
     )
 
     checkout_time: datetime | None = Field(
         default=None,
+        title="Horário do Check-out",
         description=(
-            "Data e hora do checkout. "
+            "Data e hora em que o usuário realizou o check-out. "
             "Permanece nulo enquanto o usuário estiver na academia."
         ),
+        examples=[
+            "2026-07-25T09:47:10",
+            None,
+        ],
     )
 
     model_config = ConfigDict(
         from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 1,
+                "user_id": 5,
+                "checkin_time": "2026-07-25T08:15:32",
+                "checkout_time": "2026-07-25T09:47:10",
+            }
+        },
     )

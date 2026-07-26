@@ -1,6 +1,38 @@
-from pydantic import BaseModel
+"""
+Schemas relacionados à autenticação.
+"""
+
+from pydantic import BaseModel, Field
 
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    """
+    Token JWT retornado após autenticação.
+    """
+
+    access_token: str = Field(
+        ...,
+        title="Access Token",
+        description="Token JWT utilizado para autenticar as requisições protegidas da API.",
+        examples=[
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        ],
+    )
+
+    token_type: str = Field(
+        default="bearer",
+        title="Tipo do Token",
+        description="Tipo do token utilizado na autenticação HTTP Authorization.",
+        examples=["bearer"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "access_token": (
+                    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                ),
+                "token_type": "bearer",
+            }
+        }
+    }

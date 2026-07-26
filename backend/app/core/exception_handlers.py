@@ -3,101 +3,161 @@ Handlers globais de exceções da aplicação.
 """
 
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.core.exceptions import AppException
 from app.core.logger import logger
 from app.schemas.error import ErrorResponse
 
 
-def register_exception_handlers(app: FastAPI):
+def build_error_response(
+    *,
+    status: int,
+    message: str,
+    path: str,
+    code: str | None = None,
+    errors: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """
+    Cria uma resposta padronizada de erro.
+    """
+
+    error = ErrorResponse(
+        success=False,
+        status=status,
+        code=code,
+        message=message,
+        path=path,
+        timestamp=datetime.now(timezone.utc),
+    )
+
+    response = error.model_dump(
+        mode="json",
+        exclude_none=True,
+    )
+
+    if errors:
+        response["errors"] = errors
+
+    return response
+
+
+def register_exception_handlers(app: FastAPI) -> None:
     """
     Registra todos os handlers globais da aplicação.
     """
+
+    @app.exception_handler(AppException)
+    async def app_exception_handler(
+        request: Request,
+        exc: AppException,
+    ) -> JSONResponse:
+        """
+        Trata exceções personalizadas da aplicação.
+        """
+
+        logger.warning(
+            "%s | %s %s",
+            exc.code,
+            request.method,
+            request.url.path,
+        )
+
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=build_error_response(
+                status=exc.status_code,
+                code=exc.code,
+                message=exc.message,
+                path=request.url.path,
+            ),
+        )
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(
         request: Request,
         exc: HTTPException,
-    ):
+    ) -> JSONResponse:
         """
-        Trata exceções HTTP lançadas pela aplicação.
+        Trata exceções HTTP.
         """
 
         logger.warning(
-            "HTTP %s | %s | %s",
+            "HTTP %s | %s %s",
             exc.status_code,
             request.method,
             request.url.path,
         )
 
-        error = ErrorResponse(
-            status=exc.status_code,
-            message=exc.detail,
-            path=request.url.path,
-            timestamp=datetime.now(timezone.utc),
-        )
+        code = None
+        message = str(exc.detail)
+
+        if isinstance(exc.detail, dict):
+            code = exc.detail.get("code")
+            message = exc.detail.get("message", message)
 
         return JSONResponse(
             status_code=exc.status_code,
-            content=error.model_dump(mode="json"),
+            content=build_error_response(
+                status=exc.status_code,
+                code=code,
+                message=message,
+                path=request.url.path,
+            ),
         )
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request,
         exc: RequestValidationError,
-    ):
+    ) -> JSONResponse:
         """
-        Trata erros de validação do FastAPI.
+        Trata erros de validação.
         """
 
         logger.warning(
-            "Erro de validação | %s %s",
+            "VALIDATION_ERROR | %s %s",
             request.method,
             request.url.path,
         )
 
-        error = ErrorResponse(
-            status=422,
-            message="Dados da requisição inválidos.",
-            path=request.url.path,
-            timestamp=datetime.now(timezone.utc),
-        )
-
-        response = error.model_dump(mode="json")
-        response["errors"] = exc.errors()
-
         return JSONResponse(
             status_code=422,
-            content=response,
+            content=build_error_response(
+                status=422,
+                code="VALIDATION_ERROR",
+                message="Dados da requisição inválidos.",
+                path=request.url.path,
+                errors=exc.errors(),
+            ),
         )
 
     @app.exception_handler(Exception)
     async def global_exception_handler(
         request: Request,
         exc: Exception,
-    ):
+    ) -> JSONResponse:
         """
-        Trata exceções inesperadas da aplicação.
+        Trata erros inesperados.
         """
 
         logger.exception(
             "Erro interno | %s %s",
             request.method,
             request.url.path,
-        )
-
-        error = ErrorResponse(
-            status=500,
-            message="Ocorreu um erro interno no servidor.",
-            path=request.url.path,
-            timestamp=datetime.now(timezone.utc),
+            exc_info=exc,
         )
 
         return JSONResponse(
             status_code=500,
-            content=error.model_dump(mode="json"),
+            content=build_error_response(
+                status=500,
+                code="INTERNAL_SERVER_ERROR",
+                message="Ocorreu um erro interno no servidor.",
+                path=request.url.path,
+            ),
         )

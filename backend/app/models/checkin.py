@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
+if TYPE_CHECKING:
+    from app.models.user import User
+
 
 class Checkin(Base):
     """
     Representa um registro de entrada e saída de um usuário na academia.
 
-    Cada registro corresponde a uma permanência do aluno dentro da academia.
+    Cada registro corresponde a uma permanência do usuário dentro da academia.
     """
 
     __tablename__ = "checkins"
