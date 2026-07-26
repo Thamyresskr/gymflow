@@ -1,0 +1,120 @@
+.container {
+    width: 100vw;
+    height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background: #0f172a;
+}
+
+.card {
+
+    width: 380px;
+
+    background: white;
+
+    border-radius: 12px;
+
+    padding: 40px;
+
+    box-shadow: 0 10px 35px rgba(0,0,0,.25);
+
+}
+
+.card h1{
+
+    text-align:center;
+
+    margin-bottom:8px;
+
+    color:#2563eb;
+
+}
+
+.card p{
+
+    text-align:center;
+
+    margin-bottom:30px;
+
+    color:#666;
+
+}
+
+.card form{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:16px;
+
+}
+
+.card input{
+
+    padding:14px;
+
+    border-radius:8px;
+
+    border:1px solid #ccc;
+
+    font-size:15px;
+
+}
+
+.card input:focus{
+
+    outline:none;
+
+    border-color:#2563eb;
+
+}
+
+.card button{
+
+    padding:14px;
+
+    border:none;
+
+    border-radius:8px;
+
+    cursor:pointer;
+
+    background:#2563eb;
+
+    color:white;
+
+    font-size:16px;
+
+    font-weight:bold;
+
+    transition:.2s;
+
+}
+
+.card button:hover{
+
+    background:#1d4ed8;
+
+}
+
+.card button:disabled{
+
+    opacity:.6;
+
+    cursor:not-allowed;
+
+}
+
+.error{
+
+    color:red;
+
+    text-align:center;
+
+    font-size:14px;
+
+}
