@@ -1,0 +1,224 @@
+/**
+ * Página de usuários.
+ */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* ===========================
+   Cabeçalho
+=========================== */
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header h1 {
+    margin: 0;
+
+    font-size: 2rem;
+    font-weight: 700;
+
+    color: var(--color-text);
+}
+
+.header p {
+    margin-top: .5rem;
+
+    color: var(--color-text-light);
+}
+
+/* ===========================
+   Botão Novo Usuário
+=========================== */
+
+.addButton {
+    padding: .85rem 1.4rem;
+
+    border: none;
+    border-radius: var(--radius-md);
+
+    background: var(--color-primary);
+    color: #ffffff;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background var(--transition),
+        transform var(--transition);
+}
+
+.addButton:hover {
+    background: var(--color-primary-hover);
+    transform: translateY(-2px);
+}
+
+/* ===========================
+   Barra de pesquisa
+=========================== */
+
+.toolbar {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.search {
+    width: 320px;
+    max-width: 100%;
+
+    padding: .9rem 1rem;
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background: var(--color-surface);
+
+    font-size: .95rem;
+
+    transition: border-color var(--transition);
+}
+
+.search:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* ===========================
+   Tabela
+=========================== */
+
+.tableContainer {
+    overflow-x: auto;
+
+    background: var(--color-surface);
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-sm);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table thead {
+    background: #f8fafc;
+}
+
+.table th,
+.table td {
+    padding: 1rem;
+
+    text-align: left;
+
+    border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+    color: var(--color-text);
+    font-size: .95rem;
+    font-weight: 700;
+}
+
+.table td {
+    color: var(--color-text-light);
+}
+
+.table tbody tr:hover {
+    background: #f9fbfd;
+}
+
+/* ===========================
+   Ações
+=========================== */
+
+.actions {
+    display: flex;
+    gap: .75rem;
+}
+
+.editButton,
+.deleteButton {
+    border: none;
+    border-radius: var(--radius-sm);
+
+    padding: .55rem 1rem;
+
+    font-size: .9rem;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        transform var(--transition),
+        opacity var(--transition);
+}
+
+.editButton {
+    background: #2563eb;
+    color: white;
+}
+
+.editButton:hover {
+    transform: translateY(-1px);
+}
+
+.deleteButton {
+    background: #dc2626;
+    color: white;
+}
+
+.deleteButton:hover {
+    transform: translateY(-1px);
+}
+
+/* ===========================
+   Estado vazio
+=========================== */
+
+.empty {
+    padding: 2rem;
+
+    text-align: center;
+
+    color: var(--color-text-light);
+}
+
+/* ===========================
+   Responsividade
+=========================== */
+
+@media (max-width: 768px) {
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .toolbar {
+        justify-content: stretch;
+    }
+
+    .search {
+        width: 100%;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .editButton,
+    .deleteButton {
+        width: 100%;
+    }
+}

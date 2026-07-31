@@ -1,0 +1,231 @@
+/**
+ * Dashboard da aplicação.
+ */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+
+    width: 100%;
+}
+
+/* ===========================
+   Cabeçalho
+=========================== */
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.header h1 {
+    margin: 0;
+
+    font-size: 2rem;
+    font-weight: 700;
+
+    color: var(--color-text);
+}
+
+.header p {
+    margin: 0;
+
+    color: var(--color-text-light);
+
+    font-size: 1rem;
+}
+
+/* ===========================
+   Cards
+=========================== */
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    min-height: 120px;
+
+    padding: 1.5rem;
+
+    background: var(--color-surface);
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-sm);
+
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        border-color 0.25s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+
+    border-color: var(--color-primary);
+
+    box-shadow: var(--shadow-md);
+}
+
+.cardTitle {
+    margin-bottom: 0.75rem;
+
+    color: var(--color-text-light);
+
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.cardValue {
+    font-size: 2rem;
+    font-weight: 700;
+
+    color: var(--color-primary);
+}
+
+/* ===========================
+   Painel
+=========================== */
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+
+    padding: 1.5rem;
+
+    background: var(--color-surface);
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-sm);
+}
+
+.panel h2 {
+    margin: 0;
+
+    color: var(--color-text);
+
+    font-size: 1.25rem;
+}
+
+/* ===========================
+   Tabela
+=========================== */
+
+.table {
+    display: flex;
+    flex-direction: column;
+
+    overflow: hidden;
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.tableHeader {
+    display: grid;
+    grid-template-columns: 2fr 1fr 100px;
+    align-items: center;
+
+    padding: 1rem;
+
+    background: var(--color-background-alt);
+
+    border-bottom: 1px solid var(--color-border);
+
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-text-light);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 100px;
+    align-items: center;
+
+    padding: 1rem;
+
+    transition: background 0.2s ease;
+
+    border-bottom: 1px solid var(--color-border);
+}
+
+.row:last-child {
+    border-bottom: none;
+}
+
+.row:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.row span:nth-child(2) {
+    font-weight: 600;
+}
+
+.row span:last-child {
+    text-align: right;
+
+    color: var(--color-text-light);
+}
+
+/* ===========================
+   Estado vazio
+=========================== */
+
+.empty {
+    padding: 2rem;
+
+    text-align: center;
+
+    color: var(--color-text-light);
+}
+
+/* ===========================
+   Responsividade
+=========================== */
+
+@media (max-width: 768px) {
+    .cards {
+        grid-template-columns: 1fr;
+    }
+
+    .tableHeader {
+        display: none;
+    }
+
+    .table {
+        border: none;
+    }
+
+    .row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+
+        margin-bottom: 1rem;
+        padding: 1rem;
+
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+
+        box-shadow: var(--shadow-sm);
+    }
+
+    .row span:last-child {
+        text-align: left;
+    }
+}

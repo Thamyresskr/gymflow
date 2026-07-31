@@ -1,0 +1,251 @@
+/**
+ * Página de Check-ins.
+ */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+
+    width: 100%;
+}
+
+/* ===========================
+   Cabeçalho
+=========================== */
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.header h1 {
+    margin: 0;
+
+    color: var(--color-text);
+
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.header p {
+    margin: 0;
+
+    color: var(--color-text-light);
+
+    font-size: 1rem;
+}
+
+/* ===========================
+   Barra de ações
+=========================== */
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ===========================
+   Botões
+=========================== */
+
+.primaryButton,
+.secondaryButton {
+    padding: 0.75rem 1.5rem;
+
+    border: none;
+    border-radius: var(--radius-md);
+
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        opacity 0.2s ease,
+        transform 0.2s ease;
+}
+
+.primaryButton {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.primaryButton:hover:not(:disabled) {
+    opacity: 0.95;
+    transform: translateY(-1px);
+}
+
+.secondaryButton {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.secondaryButton:hover:not(:disabled) {
+    opacity: 0.95;
+    transform: translateY(-1px);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ===========================
+   Lista
+=========================== */
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ===========================
+   Card
+=========================== */
+
+.card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 1.5rem;
+
+    background: var(--color-surface);
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-sm);
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+
+    box-shadow: var(--shadow-md);
+}
+
+/* ===========================
+   Informações
+=========================== */
+
+.info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.title {
+    margin: 0;
+
+    color: var(--color-text);
+
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.subtitle {
+    color: var(--color-text-light);
+
+    font-size: 0.9rem;
+}
+
+/* ===========================
+   Área direita
+=========================== */
+
+.right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+/* ===========================
+   Badge
+=========================== */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 110px;
+
+    padding: 0.4rem 0.9rem;
+
+    border-radius: 999px;
+
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.active {
+    background: rgba(22, 163, 74, 0.15);
+
+    color: rgb(22, 163, 74);
+}
+
+.finished {
+    background: rgba(220, 38, 38, 0.12);
+
+    color: rgb(220, 38, 38);
+}
+
+/* ===========================
+   Estado vazio
+=========================== */
+
+.empty {
+    padding: 2rem;
+
+    text-align: center;
+
+    color: var(--color-text-light);
+
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+}
+
+/* ===========================
+   Responsividade
+=========================== */
+
+@media (max-width: 768px) {
+
+    .actions {
+        justify-content: stretch;
+    }
+
+    .primaryButton {
+        width: 100%;
+    }
+
+    .card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .right {
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .secondaryButton {
+        width: 100%;
+    }
+
+    .badge {
+        align-self: flex-start;
+    }
+}

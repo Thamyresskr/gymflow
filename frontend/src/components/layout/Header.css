@@ -1,29 +1,132 @@
+/**
+ * Cabeçalho principal da aplicação.
+ */
+
 .header {
-    height: 70px;
+    height: 72px;
 
     display: flex;
-
     justify-content: space-between;
-
     align-items: center;
 
-    padding: 0 24px;
+    padding: 0 2rem;
 
-    background: white;
+    background-color: var(--color-surface);
 
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
 
-    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
-.header-title{
-    font-size:24px;
-
-    font-weight:bold;
-
-    color:#0057D9;
+/**
+ * Área esquerda
+ */
+.header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
 }
 
-.header-user{
-    color:#555;
+.header-title {
+    margin: 0;
+
+    font-size: 1.5rem;
+    font-weight: 700;
+
+    color: var(--color-primary);
+}
+
+.header-subtitle {
+    font-size: 0.85rem;
+    color: var(--color-text-light);
+}
+
+/**
+ * Área direita
+ */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+/**
+ * Informações do usuário
+ */
+.header-user {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.header-user-name {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.header-user-role {
+    font-size: 0.85rem;
+    color: var(--color-text-light);
+}
+
+/**
+ * Botão de logout
+ */
+.logout-button {
+    padding: 0.65rem 1rem;
+
+    border: none;
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-primary);
+    color: #ffffff;
+
+    font-size: 0.95rem;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background-color var(--transition),
+        transform var(--transition),
+        box-shadow var(--transition);
+}
+
+.logout-button:hover {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+}
+
+.logout-button:active {
+    transform: translateY(0);
+}
+
+.logout-button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/**
+ * Responsividade
+ */
+@media (max-width: 768px) {
+    .header {
+        height: auto;
+        padding: 1rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .header-user {
+        align-items: flex-start;
+    }
 }

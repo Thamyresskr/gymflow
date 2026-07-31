@@ -1,6 +1,39 @@
-import api from "./api";
+/**
+ * Serviços relacionados à autenticação.
+ *
+ * Responsabilidades:
+ * - Realizar login.
+ * - Armazenar o token JWT.
+ * - Recuperar o token.
+ * - Recuperar o usuário autenticado.
+ * - Encerrar sessão.
+ * - Fornecer o cabeçalho Authorization.
+ */
 
-const TOKEN_KEY = "gymflow_token";
+import api from "@/services/api";
+
+/**
+ * Chaves utilizadas no armazenamento local.
+ */
+const STORAGE_KEYS = Object.freeze({
+    TOKEN: "gymflow_token",
+});
+
+/**
+ * Armazena o token JWT.
+ *
+ * @param {string} token
+ */
+function saveToken(token) {
+    localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+}
+
+/**
+ * Remove o token armazenado.
+ */
+function removeToken() {
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+}
 
 /**
  * Realiza o login do usuário.
@@ -10,60 +43,82 @@ const TOKEN_KEY = "gymflow_token";
  * @returns {Promise<Object>}
  */
 export async function login(email, password) {
-  const formData = new URLSearchParams();
+    const formData = new URLSearchParams();
 
-  formData.append("username", email);
-  formData.append("password", password);
+    formData.append("username", email);
+    formData.append("password", password);
 
-  const response = await api.post("/auth/login", formData, {
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-  });
+    try {
+        const response = await api.post("/auth/login", formData, {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        });
 
-  localStorage.setItem(TOKEN_KEY, response.data.access_token);
+        const token = response.data?.access_token;
 
-  return response.data;
+        if (!token) {
+            throw new Error("Token de autenticação não retornado pela API.");
+        }
+
+        saveToken(token);
+
+        return response.data;
+    } catch (error) {
+        removeToken();
+        throw error;
+    }
 }
 
 /**
- * Remove o token armazenado.
+ * Retorna os dados do usuário autenticado.
+ *
+ * @returns {Promise<Object>}
+ */
+export async function getCurrentUser() {
+    const response = await api.get("/users/me", {
+        headers: getAuthorizationHeader(),
+    });
+
+    return response.data;
+}
+
+/**
+ * Encerra a sessão do usuário.
  */
 export function logout() {
-  localStorage.removeItem(TOKEN_KEY);
+    removeToken();
 }
 
 /**
- * Retorna o token JWT.
+ * Retorna o token JWT armazenado.
  *
  * @returns {string|null}
  */
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(STORAGE_KEYS.TOKEN);
 }
 
 /**
- * Verifica se o usuário está autenticado.
+ * Verifica se existe um usuário autenticado.
  *
  * @returns {boolean}
  */
 export function isAuthenticated() {
-  return !!getToken();
+    return Boolean(getToken());
 }
 
 /**
- * Retorna o cabeçalho Authorization para requisições autenticadas.
+ * Retorna o cabeçalho Authorization.
  *
  * @returns {Object}
  */
 export function getAuthorizationHeader() {
-  const token = getToken();
+    const token = getToken();
 
-  if (!token) {
-    return {};
-  }
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+    return token
+        ? {
+              Authorization: `Bearer ${token}`,
+          }
+        : {};
 }

@@ -1,7 +1,13 @@
+/**
+ * Componente raiz da aplicação.
+ *
+ * Responsável por renderizar as rotas do GymFlow.
+ */
+
+import AppRoutes from "@/routes/AppRoutes";
+
 function App() {
-  return (
-    <h1>GymFlow</h1>
-  );
+    return <AppRoutes />;
 }
 
 export default App;

@@ -105,6 +105,31 @@ def get_all_checkins(
     )
 
 
+def get_user_checkins(
+    db: Session,
+    user_id: int,
+) -> list[Checkin]:
+    """
+    Retorna o histórico de check-ins de um usuário.
+
+    Os registros são ordenados do mais recente para o mais antigo.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        user_id: Identificador do usuário.
+
+    Returns:
+        list[Checkin]: Lista de check-ins do usuário.
+    """
+
+    return (
+        db.query(Checkin)
+        .filter(Checkin.user_id == user_id)
+        .order_by(Checkin.checkin_time.desc())
+        .all()
+    )
+
+
 def get_active_checkins(
     db: Session,
 ) -> list[Checkin]:

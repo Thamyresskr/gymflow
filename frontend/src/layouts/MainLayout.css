@@ -1,16 +1,49 @@
+/**
+ * Layout principal da aplicação.
+ */
+
 .layout {
-  display: flex;
-  min-height: 100vh;
-  background: #f5f7fa;
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--color-background);
 }
 
+/**
+ * Área principal (Header + Conteúdo)
+ */
 .layout-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
+/**
+ * Conteúdo das páginas
+ */
 .page-content {
-  flex: 1;
-  padding: 24px;
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    background-color: var(--color-background);
+}
+
+/**
+ * Responsividade
+ */
+@media (max-width: 1024px) {
+    .page-content {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .layout {
+        flex-direction: column;
+    }
+
+    .page-content {
+        padding: 1rem;
+    }
 }

@@ -111,6 +111,35 @@ def listar_usuarios(
 
 
 @router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Obter usuário autenticado",
+    response_description="Dados do usuário autenticado retornados com sucesso.",
+    description="""
+Retorna as informações do usuário autenticado a partir do token JWT enviado
+no cabeçalho da requisição.
+
+Este endpoint é utilizado pelo frontend para recuperar os dados do usuário
+após o login, sem necessidade de informar o identificador.
+""",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "model": ErrorResponse,
+            "description": "Usuário não autenticado.",
+        },
+    },
+)
+def obter_usuario_logado(
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    """
+    Retorna os dados do usuário autenticado.
+    """
+
+    return current_user
+
+
+@router.get(
     "/{user_id}",
     response_model=UserResponse,
     summary="Buscar usuário",

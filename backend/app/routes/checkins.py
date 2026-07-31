@@ -16,6 +16,7 @@ from app.core.dependencies import get_db
 from app.crud.checkin import (
     get_active_checkins,
     get_all_checkins,
+    get_user_checkins,
 )
 from app.models.user import User
 from app.schemas.checkin import CheckinResponse
@@ -116,6 +117,10 @@ Retorna o registro atualizado do check-in.
             "model": ErrorResponse,
             "description": "Usuário não autenticado.",
         },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Você não possui permissão para finalizar este check-in.",
+        },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
             "description": "Check-in não encontrado.",
@@ -201,6 +206,55 @@ def listar_checkins_ativos(
 
 
 @router.get(
+    "/me",
+    response_model=list[CheckinResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Histórico do usuário autenticado",
+    description="""
+Retorna apenas os check-ins pertencentes ao usuário autenticado.
+
+O usuário é identificado automaticamente através do token JWT enviado
+na requisição.
+
+Este endpoint é utilizado pelo frontend para que usuários do perfil
+ALUNO visualizem apenas seus próprios registros.
+""",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Histórico do usuário retornado com sucesso.",
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "model": ErrorResponse,
+            "description": "Usuário não autenticado.",
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "model": ErrorResponse,
+            "description": "Erro interno do servidor.",
+        },
+    },
+)
+def listar_meus_checkins(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[CheckinResponse]:
+    """
+    Retorna o histórico de check-ins do usuário autenticado.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        current_user: Usuário autenticado.
+
+    Returns:
+        list[CheckinResponse]: Histórico de check-ins do usuário.
+    """
+
+    return get_user_checkins(
+        db=db,
+        user_id=current_user.id,
+    )
+
+
+@router.get(
     "/",
     response_model=list[CheckinResponse],
     status_code=status.HTTP_200_OK,
@@ -209,6 +263,9 @@ def listar_checkins_ativos(
 Retorna o histórico completo de check-ins registrados na aplicação.
 
 Este endpoint requer autenticação utilizando um token JWT válido.
+
+Atualmente está disponível para usuários autenticados e será utilizado
+pelos perfis ADMIN e RECEPÇÃO nas próximas sprints.
 """,
     responses={
         status.HTTP_200_OK: {
