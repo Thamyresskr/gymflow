@@ -1,7 +1,7 @@
 /**
- * Constantes de rotas da aplicação GymFlow.
+ * Rotas da aplicação GymFlow.
  *
- * Centraliza os caminhos utilizados pelo frontend.
+ * Centraliza todos os caminhos da aplicação.
  */
 
 export const ROUTES = Object.freeze({

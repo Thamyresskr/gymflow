@@ -10,8 +10,9 @@
 
 import { useEffect, useState } from "react";
 
-import EmptyState from "@/components/ui/EmptyState";
-import Loading from "@/components/ui/Loading";
+
+import EmptyState from "@/components/ui/EmptyState/EmptyState";
+import Loading from "@/components/ui/Loading/Loading";
 import { USER_ROLES } from "@/constants/roles";
 import { useAuthContext } from "@/contexts/AuthContext";
 

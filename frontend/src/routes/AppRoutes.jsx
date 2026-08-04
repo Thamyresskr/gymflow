@@ -1,10 +1,10 @@
 /**
  * Configuração das rotas da aplicação GymFlow.
  *
- * Estrutura:
- * - Rotas públicas.
- * - Rotas protegidas.
- * - Layout principal.
+ * Responsabilidades:
+ * - Definir todas as rotas.
+ * - Separar páginas públicas e privadas.
+ * - Aplicar layouts.
  * - Redirecionamentos.
  */
 
@@ -18,31 +18,18 @@ import {
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import MainLayout from "@/layouts/MainLayout";
 
-import Checkins from "@/pages/Checkins/Checkins";
+import { ROUTES } from "@/constants/routes";
+
 import Dashboard from "@/pages/Dashboard/Dashboard";
-import Login from "@/pages/Login/Login";
 import Users from "@/pages/Users/Users";
+import Checkins from "@/pages/Checkins/Checkins";
+import Login from "@/pages/Login/Login";
 
-/**
- * Caminhos das rotas da aplicação.
- */
-export const ROUTES = Object.freeze({
-    ROOT: "/",
-    LOGIN: "/login",
-    DASHBOARD: "/dashboard",
-    USERS: "/users",
-    CHECKINS: "/checkins",
-});
-
-/**
- * Componente responsável pelo roteamento da aplicação.
- */
 function AppRoutes() {
     return (
         <BrowserRouter>
             <Routes>
 
-                {/* Página inicial */}
                 <Route
                     path={ROUTES.ROOT}
                     element={
@@ -53,15 +40,14 @@ function AppRoutes() {
                     }
                 />
 
-                {/* Rotas públicas */}
                 <Route
                     path={ROUTES.LOGIN}
                     element={<Login />}
                 />
 
-                {/* Rotas protegidas */}
                 <Route element={<ProtectedRoute />}>
                     <Route element={<MainLayout />}>
+
                         <Route
                             path={ROUTES.DASHBOARD}
                             element={<Dashboard />}
@@ -76,10 +62,10 @@ function AppRoutes() {
                             path={ROUTES.CHECKINS}
                             element={<Checkins />}
                         />
+
                     </Route>
                 </Route>
 
-                {/* Página não encontrada */}
                 <Route
                     path="*"
                     element={
@@ -89,6 +75,7 @@ function AppRoutes() {
                         />
                     }
                 />
+
             </Routes>
         </BrowserRouter>
     );

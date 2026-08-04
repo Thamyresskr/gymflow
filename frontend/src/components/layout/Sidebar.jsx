@@ -12,7 +12,7 @@
 import { NavLink } from "react-router-dom";
 
 import { useAuthContext } from "@/contexts/AuthContext";
-import { ROUTES } from "@/routes/AppRoutes";
+import { ROUTES } from "@/constants/routes";
 
 import "./Sidebar.css";
 
