@@ -1,3 +1,4 @@
+
 """
 Configuração personalizada do OpenAPI da aplicação GymFlow.
 """
@@ -9,9 +10,6 @@ from fastapi.openapi.utils import get_openapi
 def custom_openapi(app: FastAPI):
     """
     Gera um esquema OpenAPI personalizado para a aplicação GymFlow.
-
-    O esquema de autenticação JWT é gerado automaticamente pelo
-    OAuth2PasswordBearer definido em app.core.auth.
     """
 
     if app.openapi_schema:
@@ -25,10 +23,7 @@ def custom_openapi(app: FastAPI):
         routes=app.routes,
     )
 
-    # -------------------------------------------------------------------------
     # Informações da API
-    # -------------------------------------------------------------------------
-
     openapi_schema["info"].update(
         {
             "contact": {
@@ -43,27 +38,27 @@ def custom_openapi(app: FastAPI):
         }
     )
 
-    # -------------------------------------------------------------------------
-    # Servidores
-    # -------------------------------------------------------------------------
-
+    # Servidor de desenvolvimento
     openapi_schema["servers"] = [
         {
-            "url": "http://127.0.0.1:8000",
+            "url": "http://localhost:8000",
             "description": "Ambiente de Desenvolvimento",
         }
     ]
 
-    # -------------------------------------------------------------------------
-    # Autenticação
-    # -------------------------------------------------------------------------
-    #
-    # O OAuth2PasswordBearer definido em app.core.auth já registra
-    # automaticamente o esquema de autenticação no OpenAPI.
-    #
-    # Não adicionamos manualmente um BearerAuth aqui.
-    #
-    # -------------------------------------------------------------------------
+    # Esquema de autenticação Bearer JWT
+    openapi_schema.setdefault("components", {})
+    openapi_schema["components"].setdefault(
+        "securitySchemes", {}
+    )
+
+    openapi_schema["components"]["securitySchemes"][
+        "BearerAuth"
+    ] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+    }
 
     app.openapi_schema = openapi_schema
 
