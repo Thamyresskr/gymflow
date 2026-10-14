@@ -8,6 +8,7 @@ Responsabilidades:
 - Remover usuários.
 """
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
@@ -29,7 +30,6 @@ def get_user_by_id(
     Returns:
         User | None: Usuário encontrado ou None.
     """
-
     return (
         db.query(User)
         .filter(User.id == user_id)
@@ -46,15 +46,35 @@ def get_user_by_email(
 
     Args:
         db: Sessão ativa do banco de dados.
-        email: Endereço de e-mail.
+        email: Endereço de e-mail do usuário.
 
     Returns:
         User | None: Usuário encontrado ou None.
     """
-
     return (
         db.query(User)
         .filter(User.email == email)
+        .first()
+    )
+
+
+def get_user_by_matricula(
+    db: Session,
+    matricula: str,
+) -> User | None:
+    """
+    Busca um usuário pela matrícula.
+
+    Args:
+        db: Sessão ativa do banco de dados.
+        matricula: Matrícula do usuário.
+
+    Returns:
+        User | None: Usuário encontrado ou None.
+    """
+    return (
+        db.query(User)
+        .filter(User.matricula == matricula)
         .first()
     )
 
@@ -66,8 +86,13 @@ def get_all_users(
     Retorna todos os usuários cadastrados.
 
     Os registros são ordenados alfabeticamente pelo nome.
-    """
 
+    Args:
+        db: Sessão ativa do banco de dados.
+
+    Returns:
+        list[User]: Lista de usuários cadastrados.
+    """
     return (
         db.query(User)
         .order_by(User.nome.asc())
@@ -80,16 +105,19 @@ def create_user(
     user_data: UserCreate,
 ) -> User:
     """
-    Cria um novo usuário.
+    Cria um novo usuário com o perfil ALUNO.
 
     Args:
         db: Sessão ativa do banco de dados.
-        user_data: Dados do novo usuário.
+        user_data: Dados necessários para criar o usuário.
 
     Returns:
-        User: Usuário persistido.
-    """
+        User: Usuário persistido no banco de dados.
 
+    Raises:
+        IntegrityError: Se houver violação de uma restrição
+            de integridade do banco de dados.
+    """
     user = User(
         nome=user_data.nome,
         email=user_data.email,
@@ -100,15 +128,16 @@ def create_user(
         ativo=True,
     )
 
-    db.add(user)
+    try:
+        db.add(user)
+        db.flush()
+        db.commit()
+        db.refresh(user)
+        return user
 
-    # Gera o ID antes do commit
-    db.flush()
-
-    db.commit()
-    db.refresh(user)
-
-    return user
+    except IntegrityError:
+        db.rollback()
+        raise
 
 
 def update_user(
@@ -116,23 +145,29 @@ def update_user(
     user: User,
 ) -> User:
     """
-    Persiste alterações realizadas em um usuário.
+    Persiste as alterações de um usuário existente.
 
     Args:
         db: Sessão ativa do banco de dados.
-        user: Usuário atualizado.
+        user: Instância do usuário com os campos atualizados.
 
     Returns:
-        User: Usuário persistido.
+        User: Usuário atualizado e persistido.
+
+    Raises:
+        IntegrityError: Se houver violação de uma restrição
+            de integridade do banco de dados.
     """
+    try:
+        db.add(user)
+        db.flush()
+        db.commit()
+        db.refresh(user)
+        return user
 
-    db.add(user)
-
-    db.flush()
-    db.commit()
-    db.refresh(user)
-
-    return user
+    except IntegrityError:
+        db.rollback()
+        raise
 
 
 def delete_user(
@@ -140,12 +175,20 @@ def delete_user(
     user: User,
 ) -> None:
     """
-    Remove um usuário.
+    Remove um usuário do banco de dados.
 
     Args:
         db: Sessão ativa do banco de dados.
-        user: Usuário a ser removido.
-    """
+        user: Usuário que será removido.
 
-    db.delete(user)
-    db.commit()
+    Raises:
+        IntegrityError: Se houver violação de uma restrição
+            de integridade durante a exclusão.
+    """
+    try:
+        db.delete(user)
+        db.commit()
+
+    except IntegrityError:
+        db.rollback()
+        raise
