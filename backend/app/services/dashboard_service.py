@@ -1,10 +1,5 @@
 """
 Serviços relacionados ao Dashboard.
-
-Responsabilidades:
-- Consolidar os indicadores do Dashboard.
-- Orquestrar consultas da camada CRUD.
-- Montar os objetos de resposta da API.
 """
 
 from sqlalchemy.orm import Session
@@ -23,22 +18,20 @@ from app.schemas.dashboard import (
 )
 
 
-def get_dashboard(
-    db: Session,
-) -> DashboardResponse:
+def get_resumo_ocupacao(db: Session) -> dict[str, int]:
     """
-    Obtém os indicadores consolidados do Dashboard.
+    Retorna somente a quantidade de pessoas presentes.
+    Não expõe nomes nem histórico de outros usuários.
+    """
 
-    Reúne as principais métricas da aplicação, incluindo ocupação
-    atual, quantidade de check-ins e check-outs realizados no dia,
-    tempo médio de permanência e a lista dos últimos check-ins.
+    return {
+        "ocupacao_atual": get_ocupacao_atual(db=db),
+    }
 
-    Args:
-        db: Sessão ativa do banco de dados.
 
-    Returns:
-        DashboardResponse: Objeto contendo o resumo dos indicadores
-        e os últimos check-ins registrados.
+def get_dashboard(db: Session) -> DashboardResponse:
+    """
+    Obtém os indicadores completos para os perfis administrativos.
     """
 
     resumo = DashboardResumo(

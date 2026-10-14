@@ -1,11 +1,8 @@
-
 /**
  * Página inicial da aplicação.
  *
- * Responsabilidades:
- * - Buscar os indicadores do Dashboard.
- * - Exibir os principais indicadores da academia.
- * - Exibir os últimos check-ins registrados.
+ * ADMIN e RECEPCAO: indicadores administrativos.
+ * ALUNO e PROFESSOR: somente ocupação atual.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -13,7 +10,11 @@ import { useCallback, useEffect, useState } from "react";
 import EmptyState from "@/components/ui/EmptyState/EmptyState";
 import Loading from "@/components/ui/Loading/Loading";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { getDashboard } from "@/services/dashboardService";
+import { USER_ROLES } from "@/constants/roles";
+import {
+    getDashboard,
+    getOcupacao,
+} from "@/services/dashboardService";
 
 import DashboardCards from "./components/DashboardCards";
 import styles from "./Dashboard.module.css";
@@ -21,46 +22,60 @@ import styles from "./Dashboard.module.css";
 function Dashboard() {
     const { user } = useAuthContext();
 
+    const tipoUsuario = String(
+        user?.tipo ?? user?.role ?? "",
+    ).toUpperCase();
+
+    const acessoAdministrativo = [
+        USER_ROLES.ADMIN,
+        USER_ROLES.RECEPCAO,
+    ].includes(tipoUsuario);
+
     const [dashboard, setDashboard] = useState(null);
+    const [ocupacao, setOcupacao] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    /**
-     * Busca os indicadores do Dashboard.
-     */
-    const carregarDashboard = useCallback(async (isActive = () => true) => {
-        try {
-            setError(null);
+    const carregarDashboard = useCallback(
+        async (isActive = () => true) => {
+            try {
+                setError(null);
 
-            const dados = await getDashboard();
+                if (acessoAdministrativo) {
+                    const dados = await getDashboard();
 
-            if (isActive()) {
-                setDashboard(dados);
+                    if (isActive()) {
+                        setDashboard(dados);
+                    }
+                } else {
+                    const dados = await getOcupacao();
+
+                    if (isActive()) {
+                        setOcupacao(dados);
+                    }
+                }
+            } catch (err) {
+                console.error(
+                    "Erro ao carregar Dashboard:",
+                    err,
+                );
+
+                if (isActive()) {
+                    setError(err);
+                }
+            } finally {
+                if (isActive()) {
+                    setLoading(false);
+                }
             }
-        } catch (err) {
-            console.error("Erro ao carregar Dashboard:", err);
+        },
+        [acessoAdministrativo],
+    );
 
-            if (isActive()) {
-                setError(err);
-            }
-        } finally {
-            if (isActive()) {
-                setLoading(false);
-            }
-        }
-    }, []);
-
-    /**
-     * Carrega os dados ao abrir a página.
-     */
     useEffect(() => {
         let active = true;
 
-        const carregar = async () => {
-            await carregarDashboard(() => active);
-        };
-
-        void carregar();
+        void carregarDashboard(() => active);
 
         return () => {
             active = false;
@@ -99,28 +114,36 @@ function Dashboard() {
     }
 
     const resumo = dashboard?.resumo ?? {};
-    const ultimosCheckins = dashboard?.ultimos_checkins ?? [];
+    const ultimosCheckins =
+        dashboard?.ultimos_checkins ?? [];
 
-    const dashboardData = [
-        {
-            title: "Ocupação Atual",
-            value: resumo.ocupacao_atual ?? 0,
-        },
-        {
-            title: "Check-ins Hoje",
-            value: resumo.checkins_hoje ?? 0,
-        },
-        {
-            title: "Check-outs Hoje",
-            value: resumo.checkouts_hoje ?? 0,
-        },
-        {
-            title: "Tempo Médio",
-            value: `${Number(
-                resumo.tempo_medio_permanencia ?? 0,
-            ).toFixed(2)} min`,
-        },
-    ];
+    const dashboardData = acessoAdministrativo
+        ? [
+            {
+                title: "Ocupação Atual",
+                value: resumo.ocupacao_atual ?? 0,
+            },
+            {
+                title: "Check-ins Hoje",
+                value: resumo.checkins_hoje ?? 0,
+            },
+            {
+                title: "Check-outs Hoje",
+                value: resumo.checkouts_hoje ?? 0,
+            },
+            {
+                title: "Tempo Médio",
+                value: `${Number(
+                    resumo.tempo_medio_permanencia ?? 0,
+                ).toFixed(2)} min`,
+            },
+        ]
+        : [
+            {
+                title: "Pessoas na Academia",
+                value: ocupacao?.ocupacao_atual ?? 0,
+            },
+        ];
 
     return (
         <section className={styles.container}>
@@ -139,46 +162,53 @@ function Dashboard() {
 
             <DashboardCards data={dashboardData} />
 
-            <section className={styles.panel}>
-                <h2>Últimos Check-ins</h2>
+            {acessoAdministrativo && (
+                <section className={styles.panel}>
+                    <h2>Últimos Check-ins</h2>
 
-                <div className={styles.table}>
-                    <div className={styles.tableHeader}>
-                        <span>Usuário</span>
-                        <span>Status</span>
-                        <span>Horário</span>
+                    <div className={styles.table}>
+                        <div className={styles.tableHeader}>
+                            <span>Usuário</span>
+                            <span>Status</span>
+                            <span>Horário</span>
+                        </div>
+
+                        {ultimosCheckins.length === 0 ? (
+                            <EmptyState
+                                title="Nenhum check-in encontrado"
+                                description="Os registros aparecerão aqui quando houver movimentação."
+                            />
+                        ) : (
+                            ultimosCheckins.map((item) => (
+                                <div
+                                    key={`${item.usuario}-${item.entrada}`}
+                                    className={styles.row}
+                                >
+                                    <span>{item.usuario}</span>
+
+                                    <span>
+                                        {item.saida
+                                            ? "Saída"
+                                            : "Entrada"}
+                                    </span>
+
+                                    <span>
+                                        {new Date(
+                                            item.entrada,
+                                        ).toLocaleTimeString(
+                                            "pt-BR",
+                                            {
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            },
+                                        )}
+                                    </span>
+                                </div>
+                            ))
+                        )}
                     </div>
-
-                    {ultimosCheckins.length === 0 ? (
-                        <EmptyState
-                            title="Nenhum check-in encontrado"
-                            description="Os registros aparecerão aqui quando houver movimentação."
-                        />
-                    ) : (
-                        ultimosCheckins.map((item) => (
-                            <div
-                                key={`${item.usuario}-${item.entrada}`}
-                                className={styles.row}
-                            >
-                                <span>{item.usuario}</span>
-
-                                <span>
-                                    {item.saida ? "Saída" : "Entrada"}
-                                </span>
-
-                                <span>
-                                    {new Date(
-                                        item.entrada,
-                                    ).toLocaleTimeString("pt-BR", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}
-                                </span>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </section>
+                </section>
+            )}
         </section>
     );
 }
