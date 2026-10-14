@@ -1,3 +1,4 @@
+
 /**
  * Página inicial da aplicação.
  *
@@ -7,7 +8,7 @@
  * - Exibir os últimos check-ins registrados.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import EmptyState from "@/components/ui/EmptyState/EmptyState";
 import Loading from "@/components/ui/Loading/Loading";
@@ -15,7 +16,6 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { getDashboard } from "@/services/dashboardService";
 
 import DashboardCards from "./components/DashboardCards";
-
 import styles from "./Dashboard.module.css";
 
 function Dashboard() {
@@ -26,27 +26,46 @@ function Dashboard() {
     const [error, setError] = useState(null);
 
     /**
-     * Carrega os indicadores do Dashboard.
+     * Busca os indicadores do Dashboard.
      */
-    async function carregarDashboard() {
+    const carregarDashboard = useCallback(async (isActive = () => true) => {
         try {
-            setLoading(true);
             setError(null);
 
             const dados = await getDashboard();
 
-            setDashboard(dados);
+            if (isActive()) {
+                setDashboard(dados);
+            }
         } catch (err) {
             console.error("Erro ao carregar Dashboard:", err);
-            setError(err);
-        } finally {
-            setLoading(false);
-        }
-    }
 
-    useEffect(() => {
-        carregarDashboard();
+            if (isActive()) {
+                setError(err);
+            }
+        } finally {
+            if (isActive()) {
+                setLoading(false);
+            }
+        }
     }, []);
+
+    /**
+     * Carrega os dados ao abrir a página.
+     */
+    useEffect(() => {
+        let active = true;
+
+        const carregar = async () => {
+            await carregarDashboard(() => active);
+        };
+
+        void carregar();
+
+        return () => {
+            active = false;
+        };
+    }, [carregarDashboard]);
 
     if (loading) {
         return (
@@ -65,14 +84,22 @@ function Dashboard() {
                 <p>
                     Não foi possível consultar os dados da API.
                 </p>
+
+                <button
+                    type="button"
+                    onClick={() => {
+                        setLoading(true);
+                        void carregarDashboard();
+                    }}
+                >
+                    Tentar novamente
+                </button>
             </section>
         );
     }
 
     const resumo = dashboard?.resumo ?? {};
-
-    const ultimosCheckins =
-        dashboard?.ultimos_checkins ?? [];
+    const ultimosCheckins = dashboard?.ultimos_checkins ?? [];
 
     const dashboardData = [
         {
@@ -89,8 +116,8 @@ function Dashboard() {
         },
         {
             title: "Tempo Médio",
-            value: `${(
-                resumo.tempo_medio_permanencia ?? 0
+            value: `${Number(
+                resumo.tempo_medio_permanencia ?? 0,
             ).toFixed(2)} min`,
         },
     ];
@@ -103,7 +130,7 @@ function Dashboard() {
                 <p>
                     Olá,{" "}
                     <strong>
-                        {user?.name ?? "Usuário"}
+                        {user?.nome ?? user?.name ?? "Usuário"}
                     </strong>
                     ! Bem-vindo ao{" "}
                     <strong>GymFlow</strong>.
@@ -136,21 +163,16 @@ function Dashboard() {
                                 <span>{item.usuario}</span>
 
                                 <span>
-                                    {item.saida
-                                        ? "Saída"
-                                        : "Entrada"}
+                                    {item.saida ? "Saída" : "Entrada"}
                                 </span>
 
                                 <span>
                                     {new Date(
                                         item.entrada,
-                                    ).toLocaleTimeString(
-                                        "pt-BR",
-                                        {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                        },
-                                    )}
+                                    ).toLocaleTimeString("pt-BR", {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    })}
                                 </span>
                             </div>
                         ))

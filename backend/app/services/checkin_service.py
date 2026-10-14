@@ -1,3 +1,4 @@
+
 """
 Serviços relacionados ao gerenciamento de check-ins.
 
@@ -29,19 +30,7 @@ def register_checkin(
     """
     Registra o check-in do usuário autenticado.
 
-    Verifica se o usuário já possui um check-in em aberto. Caso não
-    exista, cria um novo registro de entrada e registra o evento no
-    log da aplicação.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        current_user: Usuário autenticado.
-
-    Returns:
-        Checkin: Registro do check-in criado.
-
-    Raises:
-        HTTPException: Caso o usuário já possua um check-in em aberto.
+    Cada usuário só pode manter um check-in em aberto por vez.
     """
 
     checkin_aberto = get_open_checkin(
@@ -86,23 +75,8 @@ def finish_checkin(
     """
     Finaliza um check-in ativo.
 
-    Valida a existência do check-in, verifica se ele pertence ao
-    usuário autenticado e confirma que ainda está em aberto antes
-    de registrar o horário de saída.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        checkin_id: Identificador do check-in.
-        current_user: Usuário autenticado.
-
-    Returns:
-        Checkin: Registro do check-in atualizado.
-
-    Raises:
-        HTTPException:
-            - Caso o check-in não exista.
-            - Caso pertença a outro usuário.
-            - Caso já tenha sido finalizado.
+    ADMIN e RECEPCAO podem finalizar check-ins de qualquer usuário.
+    ALUNO e PROFESSOR só podem finalizar os próprios check-ins.
     """
 
     checkin = get_checkin_by_id(
@@ -121,10 +95,22 @@ def finish_checkin(
             detail="Check-in não encontrado.",
         )
 
-    if checkin.user_id != current_user.id:
+    tipo_usuario = getattr(current_user.tipo, "value", current_user.tipo)
+    tipo_usuario = str(tipo_usuario).lower()
+
+    possui_permissao_administrativa = tipo_usuario in {
+        "admin",
+        "recepcao",
+    }
+
+    if (
+        checkin.user_id != current_user.id
+        and not possui_permissao_administrativa
+    ):
         logger.warning(
-            "Tentativa de finalizar check-in de outro usuario | usuario=%s | checkin=%s",
+            "Tentativa de finalizar check-in de outro usuario | usuario=%s | id=%s | checkin=%s",
             current_user.email,
+            current_user.id,
             checkin.id,
         )
 

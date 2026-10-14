@@ -3,8 +3,7 @@
  *
  * Responsabilidades:
  * - Exibir a lista de equipamentos.
- * - Acionar edição.
- * - Acionar exclusão.
+ * - Permitir edição e exclusão somente quando autorizadas.
  */
 
 import PropTypes from "prop-types";
@@ -18,11 +17,19 @@ function EquipmentList({
     onEdit,
     onDelete,
 }) {
+    const canManageEquipments =
+        typeof onEdit === "function" &&
+        typeof onDelete === "function";
+
     if (!equipments.length) {
         return (
             <EmptyState
                 title="Nenhum equipamento encontrado"
-                description="Cadastre um novo equipamento para começar."
+                description={
+                    canManageEquipments
+                        ? "Cadastre um novo equipamento para começar."
+                        : "Não há equipamentos para exibir."
+                }
             />
         );
     }
@@ -39,7 +46,10 @@ function EquipmentList({
                         <th>Patrimônio</th>
                         <th>Nº Série</th>
                         <th>Status</th>
-                        <th>Ações</th>
+
+                        {canManageEquipments && (
+                            <th>Ações</th>
+                        )}
                     </tr>
                 </thead>
 
@@ -47,15 +57,10 @@ function EquipmentList({
                     {equipments.map((equipment) => (
                         <tr key={equipment.id}>
                             <td>{equipment.nome}</td>
-
                             <td>{equipment.categoria}</td>
-
                             <td>{equipment.fabricante}</td>
-
                             <td>{equipment.modelo}</td>
-
                             <td>{equipment.patrimonio}</td>
-
                             <td>{equipment.numero_serie}</td>
 
                             <td>
@@ -66,27 +71,31 @@ function EquipmentList({
                                         : equipment.status}
                             </td>
 
-                            <td className={styles.actions}>
-                                <button
-                                    type="button"
-                                    className={styles.editButton}
-                                    onClick={() =>
-                                        onEdit(equipment)
-                                    }
-                                >
-                                    Editar
-                                </button>
+                            {canManageEquipments && (
+                                <td className={styles.actions}>
+                                    <button
+                                        type="button"
+                                        className={styles.editButton}
+                                        onClick={() =>
+                                            onEdit(equipment)
+                                        }
+                                        aria-label={`Editar equipamento ${equipment.nome}`}
+                                    >
+                                        Editar
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    className={styles.deleteButton}
-                                    onClick={() =>
-                                        onDelete(equipment)
-                                    }
-                                >
-                                    Excluir
-                                </button>
-                            </td>
+                                    <button
+                                        type="button"
+                                        className={styles.deleteButton}
+                                        onClick={() =>
+                                            onDelete(equipment)
+                                        }
+                                        aria-label={`Excluir equipamento ${equipment.nome}`}
+                                    >
+                                        Excluir
+                                    </button>
+                                </td>
+                            )}
                         </tr>
                     ))}
                 </tbody>
@@ -110,9 +119,13 @@ EquipmentList.propTypes = {
         }),
     ).isRequired,
 
-    onEdit: PropTypes.func.isRequired,
+    onEdit: PropTypes.func,
+    onDelete: PropTypes.func,
+};
 
-    onDelete: PropTypes.func.isRequired,
+EquipmentList.defaultProps = {
+    onEdit: undefined,
+    onDelete: undefined,
 };
 
 export default EquipmentList;

@@ -1,3 +1,4 @@
+
 /**
  * Contexto global de autenticação.
  *
@@ -11,6 +12,7 @@
 import PropTypes from "prop-types";
 import {
     createContext,
+    useCallback,
     useContext,
     useEffect,
     useMemo,
@@ -19,83 +21,129 @@ import {
 
 import * as authService from "@/services/authService";
 
-/**
- * Contexto de autenticação.
- */
 const AuthContext = createContext(null);
 
 /**
- * Provider responsável por disponibilizar o contexto de autenticação.
+ * Provider responsável por disponibilizar o contexto.
  */
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
-
-    const [loading, setLoading] = useState(true);
-
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loading, setLoading] = useState(
+        () => authService.isAuthenticated(),
+    );
+    const [isAuthenticated, setIsAuthenticated] = useState(
+        () => authService.isAuthenticated(),
+    );
 
     /**
-     * Carrega os dados do usuário autenticado.
+     * Busca o usuário autenticado e normaliza seu perfil.
+     * isActive impede atualizações após a limpeza do efeito.
      */
-    async function loadUser() {
+    const loadUser = useCallback(async (isActive = () => true) => {
         try {
             const currentUser = await authService.getCurrentUser();
 
-            setUser(currentUser);
-            setIsAuthenticated(true);
-        } catch (error) {
-            authService.logout();
+            if (!currentUser) {
+                throw new Error(
+                    "A API não retornou os dados do usuário.",
+                );
+            }
 
-            setUser(null);
-            setIsAuthenticated(false);
+            const normalizedUser = {
+                ...currentUser,
+                role: String(
+                    currentUser.tipo ?? currentUser.role ?? "",
+                ).toUpperCase(),
+            };
+
+            if (isActive()) {
+                setUser(normalizedUser);
+                setIsAuthenticated(true);
+            }
+
+            return normalizedUser;
+        } catch {
+            if (isActive()) {
+                authService.logout();
+                setUser(null);
+                setIsAuthenticated(false);
+            }
+
+            return null;
         } finally {
-            setLoading(false);
-        }
-    }
-
-    /**
-     * Verifica se existe uma sessão válida ao iniciar a aplicação.
-     */
-    useEffect(() => {
-        if (authService.isAuthenticated()) {
-            loadUser();
-        } else {
-            setLoading(false);
+            if (isActive()) {
+                setLoading(false);
+            }
         }
     }, []);
 
     /**
-     * Realiza o login.
-     *
-     * @param {string} email
-     * @param {string} password
+     * Valida uma sessão existente na inicialização.
      */
-    async function login(email, password) {
-        await authService.login(email, password);
+    useEffect(() => {
+        let active = true;
 
-        await loadUser();
-    }
+        async function initializeSession() {
+            if (!authService.isAuthenticated()) {
+                return;
+            }
+
+            await loadUser(() => active);
+        }
+
+        void initializeSession();
+
+        return () => {
+            active = false;
+        };
+    }, [loadUser]);
+
+    /**
+     * Realiza o login e carrega os dados do usuário.
+     */
+    const login = useCallback(async (email, password) => {
+        setLoading(true);
+
+        try {
+            await authService.login(email, password);
+
+            const currentUser = await loadUser();
+
+            if (!currentUser) {
+                throw new Error(
+                    "Não foi possível carregar os dados do usuário após o login.",
+                );
+            }
+
+            return currentUser;
+        } catch (error) {
+            authService.logout();
+            setUser(null);
+            setIsAuthenticated(false);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }, [loadUser]);
 
     /**
      * Atualiza os dados do usuário autenticado.
      */
-    async function refreshUser() {
-        await loadUser();
-    }
+    const refreshUser = useCallback(
+        () => loadUser(),
+        [loadUser],
+    );
 
     /**
-     * Encerra a sessão.
+     * Encerra a sessão local.
      */
-    function logout() {
+    const logout = useCallback(() => {
         authService.logout();
-
         setUser(null);
         setIsAuthenticated(false);
-    }
+        setLoading(false);
+    }, []);
 
-    /**
-     * Valor compartilhado pelo contexto.
-     */
     const value = useMemo(
         () => ({
             user,
@@ -109,6 +157,9 @@ export function AuthProvider({ children }) {
             user,
             loading,
             isAuthenticated,
+            login,
+            logout,
+            refreshUser,
         ],
     );
 
@@ -124,10 +175,9 @@ AuthProvider.propTypes = {
 };
 
 /**
- * Hook para acesso ao contexto de autenticação.
- *
- * @returns {Object}
+ * Hook para acessar o contexto de autenticação.
  */
+ // eslint-disable-next-line react-refresh/only-export-components
 export function useAuthContext() {
     const context = useContext(AuthContext);
 

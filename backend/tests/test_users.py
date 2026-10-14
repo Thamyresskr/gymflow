@@ -1,3 +1,4 @@
+
 """
 Testes das rotas de gerenciamento de usuários.
 """
@@ -9,7 +10,8 @@ from fastapi import status
 
 def criar_usuario(client):
     """
-    Cria um usuário de teste.
+    Cria um usuário de teste pelo cadastro público.
+    O perfil inicial deve ser ALUNO.
     """
 
     identificador = uuid4().hex[:8]
@@ -27,20 +29,29 @@ def criar_usuario(client):
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    return response.json()
+    usuario = response.json()
+    assert usuario["tipo"] == "aluno"
 
+    return usuario
+
+
+# ============================================================================
+# Listagem de usuários
+# ============================================================================
 
 def test_listar_usuarios(
     client,
-    auth_headers,
+    admin_headers,
 ):
     """
-    Deve listar usuários autenticados.
+    ADMIN deve conseguir listar usuários.
     """
+
+    criar_usuario(client)
 
     response = client.get(
         "/users/",
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -48,22 +59,42 @@ def test_listar_usuarios(
     data = response.json()
 
     assert isinstance(data, list)
-    assert len(data) >= 1
+    assert len(data) >= 2
 
 
-def test_buscar_usuario_por_id(
+def test_aluno_nao_pode_listar_usuarios(
     client,
     auth_headers,
 ):
     """
-    Deve buscar usuário pelo ID.
+    ALUNO não pode listar todos os usuários.
+    """
+
+    response = client.get(
+        "/users/",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+# ============================================================================
+# Consulta por identificador
+# ============================================================================
+
+def test_buscar_usuario_por_id(
+    client,
+    admin_headers,
+):
+    """
+    ADMIN deve conseguir buscar um usuário pelo ID.
     """
 
     usuario = criar_usuario(client)
 
     response = client.get(
         f"/users/{usuario['id']}",
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -76,15 +107,15 @@ def test_buscar_usuario_por_id(
 
 def test_buscar_usuario_inexistente(
     client,
-    auth_headers,
+    admin_headers,
 ):
     """
-    Deve retornar erro ao buscar usuário inexistente.
+    ADMIN deve receber 404 ao buscar um usuário inexistente.
     """
 
     response = client.get(
         "/users/99999",
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -94,19 +125,39 @@ def test_buscar_usuario_inexistente(
     assert data["message"] == "Usuário não encontrado."
 
 
-def test_atualizar_usuario(
+def test_aluno_nao_pode_buscar_usuario_por_id(
     client,
     auth_headers,
 ):
     """
-    Deve atualizar dados de usuário.
+    ALUNO não pode consultar usuários pela rota administrativa.
+    """
+
+    response = client.get(
+        "/users/99999",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+# ============================================================================
+# Atualização de usuários
+# ============================================================================
+
+def test_atualizar_usuario(
+    client,
+    admin_headers,
+):
+    """
+    ADMIN deve conseguir atualizar dados de um usuário.
     """
 
     usuario = criar_usuario(client)
 
     response = client.put(
         f"/users/{usuario['id']}",
-        headers=auth_headers,
+        headers=admin_headers,
         json={
             "nome": "Usuário Atualizado",
             "telefone": "11888888888",
@@ -123,10 +174,10 @@ def test_atualizar_usuario(
 
 def test_atualizar_usuario_email_existente(
     client,
-    auth_headers,
+    admin_headers,
 ):
     """
-    Não permite atualizar usuário usando e-mail já existente.
+    Não permite atualizar um usuário com e-mail já cadastrado.
     """
 
     usuario1 = criar_usuario(client)
@@ -134,7 +185,7 @@ def test_atualizar_usuario_email_existente(
 
     response = client.put(
         f"/users/{usuario2['id']}",
-        headers=auth_headers,
+        headers=admin_headers,
         json={
             "email": usuario1["email"],
         },
@@ -147,12 +198,75 @@ def test_atualizar_usuario_email_existente(
     assert data["message"] == "E-mail já cadastrado."
 
 
-def test_excluir_usuario(
+def test_aluno_nao_pode_atualizar_usuario(
     client,
     auth_headers,
 ):
     """
-    Deve excluir usuário existente.
+    ALUNO não pode atualizar usuários pela rota administrativa.
+    """
+
+    usuario = criar_usuario(client)
+
+    response = client.put(
+        f"/users/{usuario['id']}",
+        headers=auth_headers,
+        json={
+            "nome": "Tentativa de alteração",
+        },
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+# ============================================================================
+# Exclusão de usuários
+# ============================================================================
+
+def test_excluir_usuario(
+    client,
+    admin_headers,
+):
+    """
+    ADMIN deve conseguir excluir um usuário de teste.
+    """
+
+    usuario = criar_usuario(client)
+
+    response = client.delete(
+        f"/users/{usuario['id']}",
+        headers=admin_headers,
+    )
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+def test_excluir_usuario_inexistente(
+    client,
+    admin_headers,
+):
+    """
+    ADMIN deve receber 404 ao excluir um usuário inexistente.
+    """
+
+    response = client.delete(
+        "/users/99999",
+        headers=admin_headers,
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    data = response.json()
+
+    assert data["message"] == "Usuário não encontrado."
+
+
+def test_aluno_nao_pode_excluir_usuario(
+    client,
+    auth_headers,
+):
+    """
+    ALUNO não pode excluir usuários.
     """
 
     usuario = criar_usuario(client)
@@ -162,24 +276,25 @@ def test_excluir_usuario(
         headers=auth_headers,
     )
 
-    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
-def test_excluir_usuario_inexistente(
+# ============================================================================
+# Dados do próprio usuário
+# ============================================================================
+
+def test_aluno_pode_consultar_proprios_dados(
     client,
     auth_headers,
 ):
     """
-    Deve retornar erro ao excluir usuário inexistente.
+    ALUNO autenticado pode consultar os próprios dados.
     """
 
-    response = client.delete(
-        "/users/99999",
+    response = client.get(
+        "/users/me",
         headers=auth_headers,
     )
 
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-
-    data = response.json()
-
-    assert data["message"] == "Usuário não encontrado."
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["tipo"] == "aluno"

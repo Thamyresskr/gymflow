@@ -1,3 +1,4 @@
+
 """
 Testes das rotas de check-ins.
 """
@@ -49,9 +50,7 @@ def login_segundo_usuario(client):
 
 
 def test_realizar_checkin(client, auth_headers):
-    """
-    Deve realizar um check-in com sucesso.
-    """
+    """Deve realizar um check-in com sucesso."""
 
     response = client.post(
         "/checkins/",
@@ -67,9 +66,7 @@ def test_realizar_checkin(client, auth_headers):
 
 
 def test_nao_permitir_dois_checkins_abertos(client, auth_headers):
-    """
-    Não deve permitir dois check-ins em aberto.
-    """
+    """Não deve permitir dois check-ins em aberto."""
 
     client.post(
         "/checkins/",
@@ -94,9 +91,28 @@ def test_nao_permitir_dois_checkins_abertos(client, auth_headers):
 
 
 def test_realizar_checkout(client, auth_headers):
-    """
-    Deve finalizar um check-in com sucesso.
-    """
+    """Deve finalizar o próprio check-in com sucesso."""
+
+    response = client.post(
+        "/checkins/",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    checkin_id = response.json()["id"]
+
+    response = client.put(
+        f"/checkins/{checkin_id}/checkout",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["checkout_time"] is not None
+
+
+def test_checkout_duplicado(client, auth_headers):
+    """Não deve permitir finalizar o mesmo check-in duas vezes."""
 
     response = client.post(
         "/checkins/",
@@ -111,28 +127,6 @@ def test_realizar_checkout(client, auth_headers):
     )
 
     assert response.status_code == status.HTTP_200_OK
-
-    data = response.json()
-
-    assert data["checkout_time"] is not None
-
-
-def test_checkout_duplicado(client, auth_headers):
-    """
-    Não deve permitir finalizar o mesmo check-in duas vezes.
-    """
-
-    response = client.post(
-        "/checkins/",
-        headers=auth_headers,
-    )
-
-    checkin_id = response.json()["id"]
-
-    client.put(
-        f"/checkins/{checkin_id}/checkout",
-        headers=auth_headers,
-    )
 
     response = client.put(
         f"/checkins/{checkin_id}/checkout",
@@ -152,9 +146,7 @@ def test_checkout_duplicado(client, auth_headers):
 
 
 def test_checkout_inexistente(client, auth_headers):
-    """
-    Deve retornar erro para um check-in inexistente.
-    """
+    """Deve retornar erro para um check-in inexistente."""
 
     response = client.put(
         "/checkins/9999/checkout",
@@ -172,9 +164,7 @@ def test_checkout_inexistente(client, auth_headers):
 
 
 def test_checkout_de_outro_usuario(client, auth_headers):
-    """
-    Não deve permitir finalizar o check-in de outro usuário.
-    """
+    """Não deve permitir que um aluno finalize o check-in de outro."""
 
     response = client.post(
         "/checkins/",
@@ -184,7 +174,6 @@ def test_checkout_de_outro_usuario(client, auth_headers):
     checkin_id = response.json()["id"]
 
     criar_segundo_usuario(client)
-
     outro_header = login_segundo_usuario(client)
 
     response = client.put(
@@ -204,19 +193,19 @@ def test_checkout_de_outro_usuario(client, auth_headers):
     assert "timestamp" in data
 
 
-def test_listar_checkins_ativos(client, auth_headers):
-    """
-    Deve listar os check-ins ativos.
-    """
+def test_listar_checkins_ativos(client, admin_headers, auth_headers):
+    """ADMIN deve conseguir listar os check-ins ativos."""
 
-    client.post(
+    response_checkin = client.post(
         "/checkins/",
         headers=auth_headers,
     )
 
+    assert response_checkin.status_code == status.HTTP_201_CREATED
+
     response = client.get(
         "/checkins/ativos",
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -228,19 +217,19 @@ def test_listar_checkins_ativos(client, auth_headers):
     assert data[0]["checkout_time"] is None
 
 
-def test_listar_historico(client, auth_headers):
-    """
-    Deve listar o histórico de check-ins.
-    """
+def test_listar_historico(client, admin_headers, auth_headers):
+    """ADMIN deve conseguir consultar o histórico completo."""
 
-    client.post(
+    response_checkin = client.post(
         "/checkins/",
         headers=auth_headers,
     )
 
+    assert response_checkin.status_code == status.HTTP_201_CREATED
+
     response = client.get(
         "/checkins/",
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -250,3 +239,49 @@ def test_listar_historico(client, auth_headers):
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["id"] > 0
+
+
+def test_aluno_nao_lista_checkins_ativos(client, auth_headers):
+    """ALUNO não deve consultar a lista geral de check-ins ativos."""
+
+    response = client.get(
+        "/checkins/ativos",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_aluno_nao_lista_historico_completo(client, auth_headers):
+    """ALUNO não deve consultar o histórico completo."""
+
+    response = client.get(
+        "/checkins/",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_aluno_consulta_proprio_historico(client, auth_headers):
+    """ALUNO deve conseguir consultar o próprio histórico."""
+
+    response_checkin = client.post(
+        "/checkins/",
+        headers=auth_headers,
+    )
+
+    assert response_checkin.status_code == status.HTTP_201_CREATED
+
+    response = client.get(
+        "/checkins/me",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["id"] == response_checkin.json()["id"]

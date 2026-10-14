@@ -1,3 +1,4 @@
+
 /**
  * Página de gerenciamento de check-ins.
  *
@@ -5,11 +6,10 @@
  * - Buscar o histórico de check-ins.
  * - Registrar novos check-ins.
  * - Registrar check-out.
- * - Atualizar a lista automaticamente.
+ * - Atualizar a lista após operações.
  */
 
-import { useEffect, useState } from "react";
-
+import { useCallback, useEffect, useState } from "react";
 
 import EmptyState from "@/components/ui/EmptyState/EmptyState";
 import Loading from "@/components/ui/Loading/Loading";
@@ -24,7 +24,6 @@ import {
 } from "@/services/checkinService";
 
 import CheckinList from "./components/CheckinList";
-
 import styles from "./Checkins.module.css";
 
 function Checkins() {
@@ -36,37 +35,80 @@ function Checkins() {
     const [submitting, setSubmitting] = useState(false);
 
     /**
-     * Carrega o histórico de check-ins.
+     * Carrega o histórico de check-ins do usuário.
      */
-    async function carregarCheckins() {
-        try {
-            setLoading(true);
-            setError(null);
+    const carregarCheckins = useCallback(async () => {
+        if (!user) {
+            setCheckins([]);
+            setLoading(false);
+            return;
+        }
 
+        setLoading(true);
+        setError(null);
+
+        try {
             const dados =
-                user?.role === USER_ROLES.ALUNO
+                user.role === USER_ROLES.ALUNO
                     ? await getMyCheckins()
                     : await getCheckins();
 
-            setCheckins(dados);
+            setCheckins(Array.isArray(dados) ? dados : []);
         } catch (err) {
             console.error("Erro ao carregar check-ins:", err);
             setError(err);
         } finally {
             setLoading(false);
         }
-    }
+    }, [user]);
 
+    /**
+     * Busca os registros quando o usuário estiver disponível.
+     */
     useEffect(() => {
-        if (user) {
-            carregarCheckins();
+        if (!user) {
+            return;
         }
+
+        let active = true;
+
+        async function carregar() {
+            setLoading(true);
+            setError(null);
+
+            try {
+                const dados =
+                    user.role === USER_ROLES.ALUNO
+                        ? await getMyCheckins()
+                        : await getCheckins();
+
+                if (active) {
+                    setCheckins(Array.isArray(dados) ? dados : []);
+                }
+            } catch (err) {
+                console.error("Erro ao carregar check-ins:", err);
+
+                if (active) {
+                    setError(err);
+                }
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        void carregar();
+
+        return () => {
+            active = false;
+        };
     }, [user]);
 
     /**
      * Registra um novo check-in.
      */
-    async function handleNovoCheckin() {
+    const handleNovoCheckin = useCallback(async () => {
         try {
             setSubmitting(true);
 
@@ -82,12 +124,12 @@ function Checkins() {
         } finally {
             setSubmitting(false);
         }
-    }
+    }, [carregarCheckins]);
 
     /**
      * Registra o check-out.
      */
-    async function handleCheckout(checkinId) {
+    const handleCheckout = useCallback(async (checkinId) => {
         try {
             setSubmitting(true);
 
@@ -103,7 +145,7 @@ function Checkins() {
         } finally {
             setSubmitting(false);
         }
-    }
+    }, [carregarCheckins]);
 
     if (loading) {
         return (
@@ -122,6 +164,14 @@ function Checkins() {
                 <p>
                     Não foi possível consultar os dados da API.
                 </p>
+
+                <button
+                    type="button"
+                    className={styles.primaryButton}
+                    onClick={carregarCheckins}
+                >
+                    Tentar novamente
+                </button>
             </section>
         );
     }
@@ -140,7 +190,7 @@ function Checkins() {
                 <button
                     type="button"
                     className={styles.primaryButton}
-                    disabled={submitting}
+                    disabled={submitting || !user}
                     onClick={handleNovoCheckin}
                 >
                     {submitting

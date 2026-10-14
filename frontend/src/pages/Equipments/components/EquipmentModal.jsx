@@ -7,7 +7,7 @@
  * - Reutilizar os componentes de UI.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 
 import Button from "@/components/ui/Button";
@@ -40,6 +40,23 @@ function buildPayload(form) {
     };
 }
 
+function buildInitialForm(equipment) {
+    if (!equipment) {
+        return { ...INITIAL_FORM };
+    }
+
+    return {
+        nome: equipment.nome ?? "",
+        categoria: equipment.categoria ?? "",
+        fabricante: equipment.fabricante ?? "",
+        modelo: equipment.modelo ?? "",
+        patrimonio: equipment.patrimonio ?? "",
+        numero_serie: equipment.numero_serie ?? "",
+        observacao: equipment.observacao ?? "",
+        status: equipment.status ?? "ativo",
+    };
+}
+
 function EquipmentModal({
     isOpen,
     onClose,
@@ -47,31 +64,9 @@ function EquipmentModal({
     equipment,
     loading,
 }) {
-    const [form, setForm] = useState(INITIAL_FORM);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setForm(INITIAL_FORM);
-            return;
-        }
-
-        if (equipment) {
-            setForm({
-                nome: equipment.nome ?? "",
-                categoria: equipment.categoria ?? "",
-                fabricante: equipment.fabricante ?? "",
-                modelo: equipment.modelo ?? "",
-                patrimonio: equipment.patrimonio ?? "",
-                numero_serie: equipment.numero_serie ?? "",
-                observacao: equipment.observacao ?? "",
-                status: equipment.status ?? "ativo",
-            });
-
-            return;
-        }
-
-        setForm(INITIAL_FORM);
-    }, [isOpen, equipment]);
+    const [form, setForm] = useState(
+        () => buildInitialForm(equipment),
+    );
 
     function handleChange(event) {
         const { name, value } = event.target;
@@ -84,7 +79,6 @@ function EquipmentModal({
 
     async function handleSubmit(event) {
         event.preventDefault();
-
         await onSave(buildPayload(form));
     }
 

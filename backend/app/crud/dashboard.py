@@ -1,3 +1,4 @@
+
 """
 Camada de acesso a dados (CRUD) para os indicadores do Dashboard.
 
@@ -7,30 +8,58 @@ Responsabilidades:
 - Consolidar informações utilizadas pelo Dashboard.
 """
 
-from datetime import date
+from datetime import date, datetime, time, timedelta, timezone
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.checkin import Checkin
 from app.models.user import User
 
 
-def get_ocupacao_atual(
-    db: Session,
-) -> int:
+# Horário de Brasília: UTC-3.
+# O Brasil não utiliza horário de verão atualmente.
+FUSO_BRASIL = timezone(timedelta(hours=-3))
+
+
+def _intervalo_hoje_utc() -> tuple[datetime, datetime]:
     """
-    Retorna a quantidade de usuários atualmente presentes.
+    Retorna o intervalo do dia atual de Brasília convertido para UTC.
 
-    Considera como presentes todos os check-ins que ainda não
-    possuem horário de check-out registrado.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-
-    Returns:
-        int: Quantidade de usuários presentes.
+    Os limites são retornados sem tzinfo para compatibilidade com
+    os valores DateTime armazenados pelo SQLite.
     """
+
+    hoje = datetime.now(FUSO_BRASIL).date()
+
+    inicio_local = datetime.combine(
+        hoje,
+        time.min,
+        tzinfo=FUSO_BRASIL,
+    )
+
+    amanha_local = datetime.combine(
+        hoje + timedelta(days=1),
+        time.min,
+        tzinfo=FUSO_BRASIL,
+    )
+
+    inicio_utc = (
+        inicio_local
+        .astimezone(timezone.utc)
+        .replace(tzinfo=None)
+    )
+
+    fim_utc = (
+        amanha_local
+        .astimezone(timezone.utc)
+        .replace(tzinfo=None)
+    )
+
+    return inicio_utc, fim_utc
+
+
+def get_ocupacao_atual(db: Session) -> int:
+    """Retorna a quantidade de check-ins que continuam abertos."""
 
     return (
         db.query(Checkin)
@@ -39,65 +68,39 @@ def get_ocupacao_atual(
     )
 
 
-def get_checkins_hoje(
-    db: Session,
-) -> int:
-    """
-    Retorna a quantidade de check-ins realizados na data atual.
+def get_checkins_hoje(db: Session) -> int:
+    """Retorna a quantidade de entradas ocorridas hoje em Brasília."""
 
-    Args:
-        db: Sessão ativa do banco de dados.
-
-    Returns:
-        int: Quantidade de check-ins realizados hoje.
-    """
+    inicio, fim = _intervalo_hoje_utc()
 
     return (
         db.query(Checkin)
         .filter(
-            func.date(Checkin.checkin_time) == date.today(),
+            Checkin.checkin_time >= inicio,
+            Checkin.checkin_time < fim,
         )
         .count()
     )
 
 
-def get_checkouts_hoje(
-    db: Session,
-) -> int:
-    """
-    Retorna a quantidade de check-outs realizados na data atual.
+def get_checkouts_hoje(db: Session) -> int:
+    """Retorna a quantidade de saídas ocorridas hoje em Brasília."""
 
-    Args:
-        db: Sessão ativa do banco de dados.
-
-    Returns:
-        int: Quantidade de check-outs realizados hoje.
-    """
+    inicio, fim = _intervalo_hoje_utc()
 
     return (
         db.query(Checkin)
         .filter(
             Checkin.checkout_time.is_not(None),
-            func.date(Checkin.checkout_time) == date.today(),
+            Checkin.checkout_time >= inicio,
+            Checkin.checkout_time < fim,
         )
         .count()
     )
 
 
-def get_tempo_medio_permanencia(
-    db: Session,
-) -> float:
-    """
-    Calcula o tempo médio de permanência em minutos.
-
-    Apenas check-ins finalizados são considerados no cálculo.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-
-    Returns:
-        float: Tempo médio de permanência em minutos.
-    """
+def get_tempo_medio_permanencia(db: Session) -> float:
+    """Calcula a permanência média em minutos dos check-ins finalizados."""
 
     checkins = (
         db.query(Checkin)
@@ -108,16 +111,23 @@ def get_tempo_medio_permanencia(
     if not checkins:
         return 0.0
 
-    total = 0.0
+    total_segundos = 0.0
 
     for checkin in checkins:
-        total += (
-            checkin.checkout_time
-            - checkin.checkin_time
-        ).total_seconds()
+        entrada = checkin.checkin_time
+        saida = checkin.checkout_time
+
+        # O SQLite pode devolver datetimes sem informação de fuso.
+        if entrada.tzinfo is None:
+            entrada = entrada.replace(tzinfo=timezone.utc)
+
+        if saida.tzinfo is None:
+            saida = saida.replace(tzinfo=timezone.utc)
+
+        total_segundos += (saida - entrada).total_seconds()
 
     return round(
-        (total / len(checkins)) / 60,
+        total_segundos / len(checkins) / 60,
         2,
     )
 
@@ -126,23 +136,11 @@ def get_ultimos_checkins(
     db: Session,
     limite: int = 10,
 ) -> list[tuple[Checkin, User]]:
-    """
-    Retorna os últimos check-ins registrados.
-
-    Os resultados são ordenados do mais recente para o mais antigo.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        limite: Quantidade máxima de registros retornados.
-
-    Returns:
-        list[tuple[Checkin, User]]: Lista contendo o check-in e
-        seu respectivo usuário.
-    """
+    """Retorna os últimos check-ins com seus respectivos usuários."""
 
     return (
         db.query(Checkin, User)
-        .join(User)
+        .join(User, Checkin.user_id == User.id)
         .order_by(Checkin.checkin_time.desc())
         .limit(limite)
         .all()

@@ -1,3 +1,4 @@
+
 """
 Rotas de gerenciamento de usuários.
 
@@ -6,12 +7,13 @@ Responsabilidades:
 - Delegar as regras de negócio para a camada de serviços.
 - Disponibilizar operações de cadastro, consulta, atualização
   e remoção de usuários.
+- Restringir operações administrativas ao perfil ADMIN.
 """
 
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, require_roles
 from app.core.dependencies import get_db
 from app.models.user import User
 from app.schemas.error import ErrorResponse
@@ -34,6 +36,10 @@ router = APIRouter(
 )
 
 
+# ==========================================================
+# Cadastro público
+# ==========================================================
+
 @router.post(
     "/",
     response_model=UserResponse,
@@ -41,14 +47,14 @@ router = APIRouter(
     summary="Cadastrar usuário",
     response_description="Usuário cadastrado com sucesso.",
     description="""
-Realiza o cadastro de um novo usuário.
+Realiza o cadastro público de um novo usuário.
 
-Regras de negócio:
-
+Regras:
 - O e-mail informado deve ser único.
-- A senha é armazenada utilizando criptografia.
+- A senha é armazenada utilizando hash.
 - O usuário é criado com status ativo.
-- O perfil inicial atribuído é ALUNO.
+- O perfil inicial é ALUNO.
+- O perfil não pode ser escolhido pelo solicitante.
 
 Este endpoint não requer autenticação.
 """,
@@ -76,7 +82,7 @@ def criar_usuario(
     db: Session = Depends(get_db),
 ) -> UserResponse:
     """
-    Cadastra um novo usuário.
+    Cadastra um novo usuário com o perfil ALUNO.
     """
 
     return register_user(
@@ -84,6 +90,10 @@ def criar_usuario(
         user_data=usuario,
     )
 
+
+# ==========================================================
+# Listagem administrativa
+# ==========================================================
 
 @router.get(
     "/",
@@ -93,39 +103,47 @@ def criar_usuario(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
+            "description": "Usuário não autenticado.",
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
+            "description": "Apenas ADMIN pode listar usuários.",
         },
     },
 )
 def listar_usuarios(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> list[UserResponse]:
     """
     Retorna todos os usuários cadastrados.
+
+    Requer o perfil ADMIN.
     """
 
     return list_users(db=db)
 
 
+# ==========================================================
+# Dados do próprio usuário
+# ==========================================================
+
 @router.get(
     "/me",
     response_model=UserResponse,
     summary="Obter usuário autenticado",
-    response_description="Dados do usuário autenticado retornados com sucesso.",
+    response_description=(
+        "Dados do usuário autenticado retornados com sucesso."
+    ),
     description="""
-Retorna as informações do usuário autenticado a partir do token JWT enviado
-no cabeçalho da requisição.
+Retorna os dados do usuário associado ao token JWT.
 
-Este endpoint é utilizado pelo frontend para recuperar os dados do usuário
-após o login, sem necessidade de informar o identificador.
+Qualquer usuário autenticado pode consultar os próprios dados.
 """,
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
-            "description": "Usuário não autenticado.",
+            "description": "Usuário não autenticado ou inativo.",
         },
     },
 )
@@ -139,6 +157,10 @@ def obter_usuario_logado(
     return current_user
 
 
+# ==========================================================
+# Consulta administrativa por identificador
+# ==========================================================
+
 @router.get(
     "/{user_id}",
     response_model=UserResponse,
@@ -147,6 +169,11 @@ def obter_usuario_logado(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
+            "description": "Usuário não autenticado.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Apenas ADMIN pode consultar outros usuários.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -157,10 +184,12 @@ def obter_usuario_logado(
 def buscar_usuario(
     user_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> UserResponse:
     """
     Busca um usuário pelo identificador.
+
+    Requer o perfil ADMIN.
     """
 
     return get_user(
@@ -168,6 +197,10 @@ def buscar_usuario(
         user_id=user_id,
     )
 
+
+# ==========================================================
+# Atualização administrativa
+# ==========================================================
 
 @router.put(
     "/{user_id}",
@@ -177,6 +210,11 @@ def buscar_usuario(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
+            "description": "Usuário não autenticado.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Apenas ADMIN pode atualizar usuários.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -192,10 +230,13 @@ def atualizar_usuario(
     user_id: int,
     usuario: UserUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> UserResponse:
     """
     Atualiza os dados de um usuário.
+
+    Requer o perfil ADMIN. A alteração do perfil não é
+    disponibilizada por meio do schema público de atualização.
     """
 
     return update_user_data(
@@ -205,6 +246,10 @@ def atualizar_usuario(
     )
 
 
+# ==========================================================
+# Remoção administrativa
+# ==========================================================
+
 @router.delete(
     "/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -212,6 +257,11 @@ def atualizar_usuario(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
+            "description": "Usuário não autenticado.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Apenas ADMIN pode excluir usuários.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -222,10 +272,12 @@ def atualizar_usuario(
 def excluir_usuario(
     user_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> Response:
     """
     Remove um usuário do sistema.
+
+    Requer o perfil ADMIN.
     """
 
     remove_user(

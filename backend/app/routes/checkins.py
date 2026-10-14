@@ -1,3 +1,4 @@
+
 """
 Rotas relacionadas ao gerenciamento de check-ins.
 
@@ -11,7 +12,7 @@ Responsabilidades:
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, require_roles
 from app.core.dependencies import get_db
 from app.crud.checkin import (
     get_active_checkins,
@@ -41,16 +42,11 @@ router = APIRouter(
 Registra a entrada do usuário autenticado na academia.
 
 Regras de negócio:
-
 - O usuário deve estar autenticado.
+- O check-in é associado ao usuário autenticado.
 - Não pode existir outro check-in ativo para o mesmo usuário.
-
-Retorna o registro do check-in criado.
 """,
     responses={
-        status.HTTP_201_CREATED: {
-            "description": "Check-in realizado com sucesso.",
-        },
         status.HTTP_400_BAD_REQUEST: {
             "model": ErrorResponse,
             "description": "O usuário já possui um check-in ativo.",
@@ -73,19 +69,7 @@ def realizar_checkin(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CheckinResponse:
-    """
-    Registra o check-in do usuário autenticado.
-
-    Encaminha a solicitação para a camada de serviços, responsável
-    por validar as regras de negócio e registrar a entrada do usuário.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        current_user: Usuário autenticado.
-
-    Returns:
-        CheckinResponse: Dados do check-in criado.
-    """
+    """Registra o check-in do usuário autenticado."""
 
     return register_checkin(
         db=db,
@@ -102,17 +86,12 @@ def realizar_checkin(
 Finaliza um check-in em aberto.
 
 Regras de negócio:
-
 - O usuário deve estar autenticado.
-- O check-in informado deve existir.
-- O check-in deve estar ativo.
-
-Retorna o registro atualizado do check-in.
+- O check-in deve existir e estar ativo.
+- ALUNO e PROFESSOR só podem finalizar o próprio check-in.
+- ADMIN e RECEPCAO podem finalizar check-ins de outros usuários.
 """,
     responses={
-        status.HTTP_200_OK: {
-            "description": "Check-out realizado com sucesso.",
-        },
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
             "description": "Usuário não autenticado.",
@@ -140,21 +119,7 @@ def realizar_checkout(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CheckinResponse:
-    """
-    Finaliza um check-in ativo.
-
-    Encaminha a solicitação para a camada de serviços, responsável
-    por localizar o check-in, validar seu estado e registrar o horário
-    de saída.
-
-    Args:
-        checkin_id: Identificador do check-in.
-        db: Sessão ativa do banco de dados.
-        current_user: Usuário autenticado.
-
-    Returns:
-        CheckinResponse: Dados atualizados do check-in.
-    """
+    """Finaliza um check-in conforme as permissões do usuário."""
 
     return finish_checkin(
         db=db,
@@ -171,15 +136,16 @@ def realizar_checkout(
     description="""
 Retorna todos os check-ins que ainda não possuem horário de saída.
 
-Este endpoint requer autenticação utilizando um token JWT válido.
+Acesso permitido apenas aos perfis ADMIN e RECEPCAO.
 """,
     responses={
-        status.HTTP_200_OK: {
-            "description": "Lista de check-ins ativos retornada com sucesso.",
-        },
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
             "description": "Usuário não autenticado.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Acesso permitido apenas para ADMIN e RECEPCAO.",
         },
         status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "model": ErrorResponse,
@@ -189,18 +155,9 @@ Este endpoint requer autenticação utilizando um token JWT válido.
 )
 def listar_checkins_ativos(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN", "RECEPCAO")),
 ) -> list[CheckinResponse]:
-    """
-    Retorna todos os check-ins ativos.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        current_user: Usuário autenticado.
-
-    Returns:
-        list[CheckinResponse]: Lista de check-ins ativos.
-    """
+    """Retorna todos os check-ins ativos."""
 
     return get_active_checkins(db=db)
 
@@ -212,17 +169,9 @@ def listar_checkins_ativos(
     summary="Histórico do usuário autenticado",
     description="""
 Retorna apenas os check-ins pertencentes ao usuário autenticado.
-
-O usuário é identificado automaticamente através do token JWT enviado
-na requisição.
-
-Este endpoint é utilizado pelo frontend para que usuários do perfil
-ALUNO visualizem apenas seus próprios registros.
+O identificador do usuário é obtido pelo token JWT.
 """,
     responses={
-        status.HTTP_200_OK: {
-            "description": "Histórico do usuário retornado com sucesso.",
-        },
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
             "description": "Usuário não autenticado.",
@@ -237,16 +186,7 @@ def listar_meus_checkins(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[CheckinResponse]:
-    """
-    Retorna o histórico de check-ins do usuário autenticado.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        current_user: Usuário autenticado.
-
-    Returns:
-        list[CheckinResponse]: Histórico de check-ins do usuário.
-    """
+    """Retorna o histórico de check-ins do usuário autenticado."""
 
     return get_user_checkins(
         db=db,
@@ -258,22 +198,20 @@ def listar_meus_checkins(
     "/",
     response_model=list[CheckinResponse],
     status_code=status.HTTP_200_OK,
-    summary="Histórico de check-ins",
+    summary="Histórico completo de check-ins",
     description="""
-Retorna o histórico completo de check-ins registrados na aplicação.
+Retorna o histórico completo de check-ins da aplicação.
 
-Este endpoint requer autenticação utilizando um token JWT válido.
-
-Atualmente está disponível para usuários autenticados e será utilizado
-pelos perfis ADMIN e RECEPÇÃO nas próximas sprints.
+Acesso permitido apenas aos perfis ADMIN e RECEPCAO.
 """,
     responses={
-        status.HTTP_200_OK: {
-            "description": "Histórico retornado com sucesso.",
-        },
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
             "description": "Usuário não autenticado.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Acesso permitido apenas para ADMIN e RECEPCAO.",
         },
         status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "model": ErrorResponse,
@@ -283,17 +221,8 @@ pelos perfis ADMIN e RECEPÇÃO nas próximas sprints.
 )
 def listar_checkins(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN", "RECEPCAO")),
 ) -> list[CheckinResponse]:
-    """
-    Retorna o histórico completo de check-ins.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        current_user: Usuário autenticado.
-
-    Returns:
-        list[CheckinResponse]: Histórico de check-ins registrados.
-    """
+    """Retorna o histórico completo de check-ins."""
 
     return get_all_checkins(db=db)

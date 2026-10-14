@@ -1,3 +1,4 @@
+
 """
 Operações de acesso a dados relacionadas à autenticação.
 """
@@ -17,8 +18,11 @@ def authenticate_user(
     """
     Autentica um usuário utilizando e-mail e senha.
 
-    Localiza o usuário pelo e-mail informado e valida a senha
-    utilizando o mecanismo de verificação configurado na aplicação.
+    Localiza o usuário pelo e-mail informado, valida a senha
+    e verifica se a conta está ativa.
+
+    Usuários inexistentes, com senha incorreta ou com conta
+    inativa não podem ser autenticados.
 
     Args:
         db: Sessão ativa do banco de dados.
@@ -26,11 +30,15 @@ def authenticate_user(
         senha: Senha em texto puro.
 
     Returns:
-        User | None: Usuário autenticado quando as credenciais são
-        válidas; caso contrário, retorna ``None``.
+        User | None: Usuário autenticado quando as credenciais
+        são válidas e a conta está ativa; caso contrário,
+        retorna None.
     """
 
-    logger.info("Tentativa de login | email=%s", email)
+    logger.info(
+        "Tentativa de login | email=%s",
+        email,
+    )
 
     usuario = (
         db.query(User)
@@ -59,6 +67,13 @@ def authenticate_user(
     if not senha_valida:
         logger.warning(
             "Senha invalida | email=%s",
+            email,
+        )
+        return None
+
+    if not usuario.ativo:
+        logger.warning(
+            "Tentativa de login de usuario inativo | email=%s",
             email,
         )
         return None

@@ -1,3 +1,4 @@
+
 """
 Rotas de gerenciamento de equipamentos.
 
@@ -11,7 +12,7 @@ Responsabilidades:
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_current_user
+from app.core.auth import require_roles
 from app.core.dependencies import get_db
 from app.models.user import User
 from app.schemas.error import ErrorResponse
@@ -45,6 +46,7 @@ Realiza o cadastro de um novo equipamento.
 
 Regras de negócio:
 
+- Apenas usuários ADMIN podem cadastrar equipamentos.
 - O patrimônio informado deve ser único.
 - O equipamento é criado com status ATIVO por padrão.
 """,
@@ -52,6 +54,14 @@ Regras de negócio:
         status.HTTP_400_BAD_REQUEST: {
             "model": ErrorResponse,
             "description": "Dados inválidos.",
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "model": ErrorResponse,
+            "description": "Autenticação necessária.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Acesso permitido apenas para administradores.",
         },
         status.HTTP_409_CONFLICT: {
             "model": ErrorResponse,
@@ -70,7 +80,7 @@ Regras de negócio:
 def criar_equipamento(
     equipamento: EquipmentCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> EquipmentResponse:
     """
     Cadastra um novo equipamento.
@@ -90,12 +100,17 @@ def criar_equipamento(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
+            "description": "Autenticação necessária.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Acesso permitido apenas para administradores.",
         },
     },
 )
 def listar_equipamentos(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> list[EquipmentResponse]:
     """
     Retorna todos os equipamentos cadastrados.
@@ -112,6 +127,11 @@ def listar_equipamentos(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
+            "description": "Autenticação necessária.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Acesso permitido apenas para administradores.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -122,7 +142,7 @@ def listar_equipamentos(
 def buscar_equipamento(
     equipment_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> EquipmentResponse:
     """
     Busca um equipamento pelo identificador.
@@ -142,6 +162,11 @@ def buscar_equipamento(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
+            "description": "Autenticação necessária.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Acesso permitido apenas para administradores.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -157,7 +182,7 @@ def atualizar_equipamento(
     equipment_id: int,
     equipamento: EquipmentUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> EquipmentResponse:
     """
     Atualiza os dados de um equipamento.
@@ -177,6 +202,11 @@ def atualizar_equipamento(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
+            "description": "Autenticação necessária.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Acesso permitido apenas para administradores.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -187,7 +217,7 @@ def atualizar_equipamento(
 def excluir_equipamento(
     equipment_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN")),
 ) -> Response:
     """
     Remove um equipamento.

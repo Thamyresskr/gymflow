@@ -1,12 +1,5 @@
 /**
  * Barra lateral de navegação da aplicação.
- *
- * Responsabilidades:
- * - Exibir a identidade da aplicação.
- * - Exibir o usuário autenticado.
- * - Disponibilizar a navegação principal.
- * - Destacar automaticamente a rota ativa.
- * - Encerrar a sessão.
  */
 
 import { NavLink } from "react-router-dom";
@@ -16,48 +9,39 @@ import { ROUTES } from "@/constants/routes";
 
 import "./Sidebar.css";
 
-/**
- * Itens do menu principal.
- */
 const MENU_ITEMS = [
     {
         label: "Dashboard",
         path: ROUTES.DASHBOARD,
+        roles: ["ADMIN", "PROFESSOR", "ALUNO"],
     },
     {
         label: "Check-ins",
         path: ROUTES.CHECKINS,
+        roles: ["ADMIN", "PROFESSOR", "ALUNO"],
     },
     {
         label: "Equipamentos",
         path: ROUTES.EQUIPMENTS,
+        roles: ["ADMIN", "PROFESSOR"],
     },
     {
         label: "Usuários",
         path: ROUTES.USERS,
+        roles: ["ADMIN"],
     },
 ];
 
-/**
- * Barra lateral da aplicação.
- */
 function Sidebar() {
-    const {
-        user,
-        logout,
-    } = useAuthContext();
+    const { user, logout } = useAuthContext();
 
+    const userRole = (
+        user?.tipo ?? user?.role ?? ""
+    ).toUpperCase();
 
-
-    const menu = MENU_ITEMS.filter((item) => {
-        if (!item.roles) {
-            return true;
-        }
-
-        const userRole = user?.tipo?.toUpperCase();
-
-        return item.roles.includes(userRole);
-    });
+    const menu = MENU_ITEMS.filter((item) =>
+        item.roles.includes(userRole)
+    );
 
     return (
         <aside
@@ -70,8 +54,7 @@ function Sidebar() {
 
             <div className="sidebar-user">
                 <strong>{user?.nome ?? "Usuário"}</strong>
-
-                <span>{user?.tipo ?? ""}</span>
+                <span>{user?.tipo ?? user?.role ?? ""}</span>
             </div>
 
             <nav

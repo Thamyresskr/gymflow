@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -22,6 +23,7 @@ class TipoUsuario(str, Enum):
     """
 
     ADMIN = "admin"
+    RECEPCAO = "recepcao"
     PROFESSOR = "professor"
     ALUNO = "aluno"
 
@@ -65,11 +67,14 @@ class User(Base):
     )
 
     # ==========================================================
-    # Perfil
+    # Perfil de acesso
     # ==========================================================
 
     tipo: Mapped[TipoUsuario] = mapped_column(
-        SQLEnum(TipoUsuario, name="tipo_usuario"),
+        SQLEnum(
+            TipoUsuario,
+            name="tipo_usuario",
+        ),
         default=TipoUsuario.ALUNO,
         nullable=False,
     )

@@ -2,10 +2,9 @@
  * Página de gerenciamento de usuários.
  *
  * Responsabilidades:
- * - Listar usuários.
- * - Permitir pesquisa.
+ * - Listar e pesquisar usuários.
  * - Controlar o carregamento dos dados.
- * - Disponibilizar cadastro, edição e exclusão.
+ * - Permitir cadastro, edição e exclusão somente para ADMIN.
  * - Integrar com a API.
  */
 
@@ -16,13 +15,17 @@ import {
     useState,
 } from "react";
 
+import { useAuthContext } from "@/contexts/AuthContext";
+
 import ConfirmDialog from "@/components/ui/ConfirmDialog/ConfirmDialog";
 import Loading from "@/components/ui/Loading/Loading";
 import { MESSAGES } from "@/constants/messages";
+
 import {
     notifyError,
     notifySuccess,
 } from "@/services/notificationService";
+
 import {
     createUser,
     deleteUser,
@@ -32,9 +35,18 @@ import {
 
 import UserModal from "./components/UserModal";
 import UserList from "./components/UserList";
+
 import styles from "./Users.module.css";
 
 function Users() {
+    const { user } = useAuthContext();
+
+    const userRole = (
+        user?.tipo ?? user?.role ?? ""
+    ).toUpperCase();
+
+    const isAdmin = userRole === "ADMIN";
+
     const [users, setUsers] = useState([]);
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(true);
@@ -47,25 +59,43 @@ function Users() {
     const [userToDelete, setUserToDelete] = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
 
-    const loadUsers = useCallback(async () => {
-        try {
-            setLoading(true);
+    const loadUsers = useCallback(
+        async (isActive = () => true) => {
+            try {
+                const data = await listUsers();
 
-            const data = await listUsers();
-
-            setUsers(data);
-        } catch (error) {
-            notifyError(
-                error.response?.data?.detail ??
-                    MESSAGES.USERS_ERROR,
-            );
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+                if (isActive()) {
+                    setUsers(data);
+                }
+            } catch (error) {
+                if (isActive()) {
+                    notifyError(
+                        error.response?.data?.detail ??
+                            error.response?.data?.message ??
+                            MESSAGES.USERS_ERROR,
+                    );
+                }
+            } finally {
+                if (isActive()) {
+                    setLoading(false);
+                }
+            }
+        },
+        [],
+    );
 
     useEffect(() => {
-        loadUsers();
+        let active = true;
+
+        async function load() {
+            await loadUsers(() => active);
+        }
+
+        void load();
+
+        return () => {
+            active = false;
+        };
     }, [loadUsers]);
 
     const filteredUsers = useMemo(() => {
@@ -76,18 +106,26 @@ function Users() {
         }
 
         return users.filter(({ nome, email }) =>
-            nome.toLowerCase().includes(term) ||
-            email.toLowerCase().includes(term),
+            (nome ?? "").toLowerCase().includes(term) ||
+            (email ?? "").toLowerCase().includes(term),
         );
     }, [users, search]);
 
     function handleNewUser() {
+        if (!isAdmin) {
+            return;
+        }
+
         setSelectedUser(null);
         setIsModalOpen(true);
     }
 
-    function handleEdit(user) {
-        setSelectedUser(user);
+    function handleEdit(selected) {
+        if (!isAdmin) {
+            return;
+        }
+
+        setSelectedUser(selected);
         setIsModalOpen(true);
     }
 
@@ -97,29 +135,30 @@ function Users() {
     }
 
     async function handleSaveUser(form) {
+        if (!isAdmin) {
+            notifyError("Você não tem permissão para gerenciar usuários.");
+            return;
+        }
+
         try {
             setLoadingSave(true);
 
             if (selectedUser) {
                 await updateUser(selectedUser.id, form);
 
-                notifySuccess(
-                    "Usuário atualizado com sucesso.",
-                );
+                notifySuccess("Usuário atualizado com sucesso.");
             } else {
                 await createUser(form);
 
-                notifySuccess(
-                    "Usuário cadastrado com sucesso.",
-                );
+                notifySuccess("Usuário cadastrado com sucesso.");
             }
 
             await loadUsers();
-
             handleCloseModal();
         } catch (error) {
             notifyError(
                 error.response?.data?.detail ??
+                    error.response?.data?.message ??
                     "Erro ao salvar usuário.",
             );
         } finally {
@@ -127,8 +166,12 @@ function Users() {
         }
     }
 
-    function handleDelete(user) {
-        setUserToDelete(user);
+    function handleDelete(selected) {
+        if (!isAdmin) {
+            return;
+        }
+
+        setUserToDelete(selected);
         setIsDeleteOpen(true);
     }
 
@@ -138,7 +181,7 @@ function Users() {
     }
 
     async function handleConfirmDelete() {
-        if (!userToDelete) {
+        if (!isAdmin || !userToDelete) {
             return;
         }
 
@@ -147,16 +190,14 @@ function Users() {
 
             await deleteUser(userToDelete.id);
 
-            notifySuccess(
-                "Usuário excluído com sucesso.",
-            );
+            notifySuccess("Usuário excluído com sucesso.");
 
             await loadUsers();
-
             handleCloseDelete();
         } catch (error) {
             notifyError(
                 error.response?.data?.detail ??
+                    error.response?.data?.message ??
                     "Erro ao excluir usuário.",
             );
         } finally {
@@ -180,18 +221,21 @@ function Users() {
                     <h1>Usuários</h1>
 
                     <p>
-                        Gerencie os usuários cadastrados
-                        no sistema.
+                        {isAdmin
+                            ? "Gerencie os usuários cadastrados no sistema."
+                            : "Consulta de usuários cadastrados."}
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    className={styles.addButton}
-                    onClick={handleNewUser}
-                >
-                    Novo Usuário
-                </button>
+                {isAdmin && (
+                    <button
+                        type="button"
+                        className={styles.addButton}
+                        onClick={handleNewUser}
+                    >
+                        Novo Usuário
+                    </button>
+                )}
             </header>
 
             <section className={styles.toolbar}>
@@ -203,37 +247,43 @@ function Users() {
                     onChange={(event) =>
                         setSearch(event.target.value)
                     }
+                    aria-label="Pesquisar usuários"
                 />
             </section>
 
             <UserList
                 users={filteredUsers}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
+                onEdit={isAdmin ? handleEdit : undefined}
+                onDelete={isAdmin ? handleDelete : undefined}
             />
 
-            <UserModal
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
-                onSave={handleSaveUser}
-                user={selectedUser}
-                loading={loadingSave}
-            />
+            {isAdmin && (
+                <>
+                    <UserModal
+                        key={`${isModalOpen}-${selectedUser?.id ?? "novo"}`}
+                        isOpen={isModalOpen}
+                        onClose={handleCloseModal}
+                        onSave={handleSaveUser}
+                        user={selectedUser}
+                        loading={loadingSave}
+                    />
 
-            <ConfirmDialog
-                isOpen={isDeleteOpen}
-                title="Excluir usuário"
-                message={
-                    userToDelete
-                        ? `Deseja realmente excluir o usuário "${userToDelete.nome}"?`
-                        : ""
-                }
-                confirmText="Excluir"
-                cancelText="Cancelar"
-                loading={loadingDelete}
-                onConfirm={handleConfirmDelete}
-                onCancel={handleCloseDelete}
-            />
+                    <ConfirmDialog
+                        isOpen={isDeleteOpen}
+                        title="Excluir usuário"
+                        message={
+                            userToDelete
+                                ? `Deseja realmente excluir o usuário "${userToDelete.nome}"?`
+                                : ""
+                        }
+                        confirmText="Excluir"
+                        cancelText="Cancelar"
+                        loading={loadingDelete}
+                        onConfirm={handleConfirmDelete}
+                        onCancel={handleCloseDelete}
+                    />
+                </>
+            )}
         </section>
     );
 }

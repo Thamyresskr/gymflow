@@ -7,7 +7,7 @@
  * - Reutilizar os componentes de UI.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 
 import Button from "@/components/ui/Button";
@@ -24,6 +24,21 @@ const INITIAL_FORM = {
     senha: "",
     ativo: true,
 };
+
+function buildInitialForm(user) {
+    if (!user) {
+        return { ...INITIAL_FORM };
+    }
+
+    return {
+        nome: user.nome ?? "",
+        email: user.email ?? "",
+        telefone: user.telefone ?? "",
+        matricula: user.matricula ?? "",
+        senha: "",
+        ativo: user.ativo ?? true,
+    };
+}
 
 function buildPayload(form, isEditing) {
     return {
@@ -48,29 +63,9 @@ function UserModal({
     user,
     loading,
 }) {
-    const [form, setForm] = useState(INITIAL_FORM);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setForm(INITIAL_FORM);
-            return;
-        }
-
-        if (user) {
-            setForm({
-                nome: user.nome ?? "",
-                email: user.email ?? "",
-                telefone: user.telefone ?? "",
-                matricula: user.matricula ?? "",
-                senha: "",
-                ativo: user.ativo ?? true,
-            });
-
-            return;
-        }
-
-        setForm(INITIAL_FORM);
-    }, [isOpen, user]);
+    const [form, setForm] = useState(
+        () => buildInitialForm(user),
+    );
 
     function handleChange(event) {
         const {
@@ -93,10 +88,7 @@ function UserModal({
         event.preventDefault();
 
         await onSave(
-            buildPayload(
-                form,
-                Boolean(user),
-            ),
+            buildPayload(form, Boolean(user)),
         );
     }
 

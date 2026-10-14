@@ -1,3 +1,4 @@
+
 """
 Testes das rotas de autenticação.
 """
@@ -22,6 +23,7 @@ def criar_usuario(client):
     )
 
     assert response.status_code == status.HTTP_201_CREATED
+    return response.json()
 
 
 def realizar_login(client):
@@ -108,20 +110,14 @@ def test_login_usuario_inexistente(client):
     assert data["success"] is False
 
 
-def test_acessar_rota_protegida(client):
+def test_acessar_rota_protegida(client, admin_headers):
     """
-    Deve acessar uma rota protegida utilizando JWT válido.
+    Deve acessar a rota administrativa utilizando JWT de administrador.
     """
-
-    criar_usuario(client)
-
-    token = realizar_login(client)
 
     response = client.get(
         "/users/",
-        headers={
-            "Authorization": f"Bearer {token}",
-        },
+        headers=admin_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK

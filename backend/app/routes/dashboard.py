@@ -1,9 +1,10 @@
+
 """
 Rotas relacionadas ao Dashboard.
 
 Responsabilidades:
-- Receber as requisições relacionadas ao Dashboard.
 - Validar o acesso do usuário autenticado.
+- Restringir o Dashboard aos perfis autorizados.
 - Delegar a geração dos indicadores para a camada de serviços.
 - Retornar os dados consolidados da aplicação.
 """
@@ -11,7 +12,7 @@ Responsabilidades:
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_current_user
+from app.core.auth import require_roles
 from app.core.dependencies import get_db
 from app.models.user import User
 from app.schemas.dashboard import DashboardResponse
@@ -32,24 +33,25 @@ router = APIRouter(
     description="""
 Retorna os principais indicadores da academia.
 
-As informações apresentadas são consolidadas em tempo real e
-podem incluir:
+Permissões:
+- ADMIN: acesso aos indicadores gerais.
+- RECEPCAO: acesso aos indicadores gerais.
 
+Indicadores disponibilizados:
 - Ocupação atual da academia.
 - Quantidade de check-ins realizados no dia.
 - Quantidade de check-outs realizados no dia.
 - Tempo médio de permanência dos usuários.
 - Relação dos últimos check-ins registrados.
-
-Este endpoint requer autenticação utilizando um token JWT válido.
 """,
     responses={
-        status.HTTP_200_OK: {
-            "description": "Indicadores retornados com sucesso.",
-        },
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
             "description": "Usuário não autenticado.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description=": "Acesso permitido apenas para ADMIN e RECEPCAO.",
         },
         status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "model": ErrorResponse,
@@ -59,21 +61,8 @@ Este endpoint requer autenticação utilizando um token JWT válido.
 )
 def dashboard(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(require_roles("ADMIN", "RECEPCAO")),
 ) -> DashboardResponse:
-    """
-    Retorna os indicadores consolidados da academia.
-
-    Após validar a autenticação do usuário, a solicitação é
-    encaminhada para a camada de serviços, responsável por
-    consolidar os indicadores exibidos no Dashboard.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        current_user: Usuário autenticado.
-
-    Returns:
-        DashboardResponse: Indicadores consolidados da aplicação.
-    """
+    """Retorna os indicadores consolidados da academia."""
 
     return get_dashboard(db=db)

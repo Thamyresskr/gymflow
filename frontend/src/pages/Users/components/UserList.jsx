@@ -3,8 +3,7 @@
  *
  * Responsabilidades:
  * - Exibir a lista de usuários.
- * - Acionar edição.
- * - Acionar exclusão.
+ * - Permitir edição e exclusão somente quando autorizadas.
  */
 
 import PropTypes from "prop-types";
@@ -18,11 +17,19 @@ function UserList({
     onEdit,
     onDelete,
 }) {
+    const canManageUsers =
+        typeof onEdit === "function" &&
+        typeof onDelete === "function";
+
     if (!users.length) {
         return (
             <EmptyState
                 title="Nenhum usuário encontrado"
-                description="Cadastre um novo usuário para começar."
+                description={
+                    canManageUsers
+                        ? "Cadastre um novo usuário para começar."
+                        : "Não há usuários para exibir."
+                }
             />
         );
     }
@@ -38,7 +45,8 @@ function UserList({
                         <th>Matrícula</th>
                         <th>Perfil</th>
                         <th>Status</th>
-                        <th>Ações</th>
+
+                        {canManageUsers && <th>Ações</th>}
                     </tr>
                 </thead>
 
@@ -46,38 +54,36 @@ function UserList({
                     {users.map((user) => (
                         <tr key={user.id}>
                             <td>{user.nome}</td>
-
                             <td>{user.email}</td>
-
                             <td>{user.telefone ?? "-"}</td>
-
                             <td>{user.matricula ?? "-"}</td>
-
                             <td>{user.tipo}</td>
 
                             <td>
-                                {user.ativo
-                                    ? "Ativo"
-                                    : "Inativo"}
+                                {user.ativo ? "Ativo" : "Inativo"}
                             </td>
 
-                            <td className={styles.actions}>
-                                <button
-                                    type="button"
-                                    className={styles.editButton}
-                                    onClick={() => onEdit(user)}
-                                >
-                                    Editar
-                                </button>
+                            {canManageUsers && (
+                                <td className={styles.actions}>
+                                    <button
+                                        type="button"
+                                        className={styles.editButton}
+                                        onClick={() => onEdit(user)}
+                                        aria-label={`Editar usuário ${user.nome}`}
+                                    >
+                                        Editar
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    className={styles.deleteButton}
-                                    onClick={() => onDelete(user)}
-                                >
-                                    Excluir
-                                </button>
-                            </td>
+                                    <button
+                                        type="button"
+                                        className={styles.deleteButton}
+                                        onClick={() => onDelete(user)}
+                                        aria-label={`Excluir usuário ${user.nome}`}
+                                    >
+                                        Excluir
+                                    </button>
+                                </td>
+                            )}
                         </tr>
                     ))}
                 </tbody>
@@ -98,8 +104,13 @@ UserList.propTypes = {
             ativo: PropTypes.bool.isRequired,
         }),
     ).isRequired,
-    onEdit: PropTypes.func.isRequired,
-    onDelete: PropTypes.func.isRequired,
+    onEdit: PropTypes.func,
+    onDelete: PropTypes.func,
+};
+
+UserList.defaultProps = {
+    onEdit: undefined,
+    onDelete: undefined,
 };
 
 export default UserList;
