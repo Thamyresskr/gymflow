@@ -285,3 +285,74 @@ def test_aluno_consulta_proprio_historico(client, auth_headers):
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["id"] == response_checkin.json()["id"]
+
+
+def test_recepcao_finaliza_checkin_de_outro_usuario(
+    client,
+    auth_headers,
+    recepcao_headers,
+):
+    """RECEPCAO pode finalizar o check-in de outro usuário."""
+
+    response_checkin = client.post(
+        "/checkins/",
+        headers=auth_headers,
+    )
+
+    assert response_checkin.status_code == status.HTTP_201_CREATED
+    checkin_id = response_checkin.json()["id"]
+
+    response = client.put(
+        f"/checkins/{checkin_id}/checkout",
+        headers=recepcao_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["checkout_time"] is not None
+
+
+def test_professor_nao_finaliza_checkin_de_outro_usuario(
+    client,
+    auth_headers,
+    professor_headers,
+):
+    """PROFESSOR não pode finalizar o check-in de outra pessoa."""
+
+    response_checkin = client.post(
+        "/checkins/",
+        headers=auth_headers,
+    )
+
+    assert response_checkin.status_code == status.HTTP_201_CREATED
+    checkin_id = response_checkin.json()["id"]
+
+    response = client.put(
+        f"/checkins/{checkin_id}/checkout",
+        headers=professor_headers,
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_admin_finaliza_checkin_de_outro_usuario(
+    client,
+    auth_headers,
+    admin_headers,
+):
+    """ADMIN pode finalizar o check-in de outro usuário."""
+
+    response_checkin = client.post(
+        "/checkins/",
+        headers=auth_headers,
+    )
+
+    assert response_checkin.status_code == status.HTTP_201_CREATED
+    checkin_id = response_checkin.json()["id"]
+
+    response = client.put(
+        f"/checkins/{checkin_id}/checkout",
+        headers=admin_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["checkout_time"] is not None
