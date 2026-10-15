@@ -1,8 +1,10 @@
 """
 Rotas relacionadas ao Dashboard.
 
-- ADMIN e RECEPCAO: acesso aos indicadores completos.
-- ALUNO e PROFESSOR: acesso somente à ocupação atual.
+Permissões:
+- ADMIN, RECEPCAO e PROFESSOR: acesso aos indicadores completos.
+- Todos os perfis autenticados: acesso à ocupação atual.
+- ALUNO: não pode consultar o dashboard completo.
 """
 
 from fastapi import APIRouter, Depends, status
@@ -30,7 +32,8 @@ router = APIRouter(
     summary="Consultar ocupação atual",
     description=(
         "Retorna somente a quantidade de pessoas presentes "
-        "na academia para usuários autenticados."
+        "na academia, sem expor dados pessoais. "
+        "Disponível para todos os perfis autenticados."
     ),
     responses={
         status.HTTP_401_UNAUTHORIZED: {
@@ -47,7 +50,7 @@ def consultar_ocupacao(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> dict[str, int]:
-    """Retorna apenas a ocupação atual, sem dados pessoais."""
+    """Retorna apenas a ocupação atual da academia."""
 
     return get_resumo_ocupacao(db=db)
 
@@ -56,10 +59,10 @@ def consultar_ocupacao(
     "/",
     response_model=DashboardResponse,
     status_code=status.HTTP_200_OK,
-    summary="Consultar Dashboard administrativo",
+    summary="Consultar dashboard completo",
     description=(
         "Retorna indicadores gerais e últimos check-ins. "
-        "Permitido somente para ADMIN e RECEPCAO."
+        "Permitido para ADMIN, RECEPCAO e PROFESSOR."
     ),
     responses={
         status.HTTP_401_UNAUTHORIZED: {
@@ -68,7 +71,10 @@ def consultar_ocupacao(
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para ADMIN e RECEPCAO.",
+            "description": (
+                "Acesso permitido somente para ADMIN, "
+                "RECEPCAO e PROFESSOR."
+            ),
         },
         status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "model": ErrorResponse,
@@ -78,7 +84,9 @@ def consultar_ocupacao(
 )
 def dashboard(
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles("ADMIN", "RECEPCAO")),
+    _: User = Depends(
+        require_roles("ADMIN", "RECEPCAO", "PROFESSOR")
+    ),
 ) -> DashboardResponse:
     """Retorna os indicadores completos da academia."""
 

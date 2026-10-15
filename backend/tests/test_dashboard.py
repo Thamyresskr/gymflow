@@ -109,7 +109,7 @@ def test_dashboard_tempo_medio(
     admin_headers,
     db_session,
 ):
-    """Deve calcular corretamente o tempo mﾃｩdio de permanﾃｪncia."""
+    """Deve calcular corretamente o tempo médio de permanência."""
 
     response = client.post(
         "/checkins/",
@@ -153,7 +153,7 @@ def test_dashboard_ultimos_checkins(
     auth_headers,
     admin_headers,
 ):
-    """Deve retornar a lista dos ﾃｺltimos check-ins."""
+    """Deve retornar a lista dos últimos check-ins."""
 
     response = client.post(
         "/checkins/",
@@ -180,8 +180,11 @@ def test_dashboard_ultimos_checkins(
     assert "saida" in ultimo
 
 
-def test_aluno_nao_acessa_dashboard(client, auth_headers):
-    """ALUNO nﾃ｣o deve acessar os indicadores gerais."""
+def test_aluno_nao_acessa_dashboard(
+    client,
+    auth_headers,
+):
+    """ALUNO não deve acessar os indicadores gerais."""
 
     response = client.get(
         "/dashboard/",
@@ -191,8 +194,11 @@ def test_aluno_nao_acessa_dashboard(client, auth_headers):
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
-def test_aluno_consulta_ocupacao(client, auth_headers):
-    """ALUNO pode consultar somente a ocupaﾃｧﾃ｣o atual."""
+def test_aluno_consulta_ocupacao(
+    client,
+    auth_headers,
+):
+    """ALUNO pode consultar a ocupação atual."""
 
     response = client.get(
         "/dashboard/ocupacao",
@@ -207,7 +213,7 @@ def test_professor_consulta_ocupacao(
     client,
     professor_headers,
 ):
-    """PROFESSOR pode consultar a ocupaﾃｧﾃ｣o atual."""
+    """PROFESSOR pode consultar a ocupação atual."""
 
     response = client.get(
         "/dashboard/ocupacao",
@@ -216,6 +222,25 @@ def test_professor_consulta_ocupacao(
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"ocupacao_atual": 0}
+
+
+def test_professor_acessa_dashboard_completo(
+    client,
+    professor_headers,
+):
+    """PROFESSOR pode consultar os indicadores completos."""
+
+    response = client.get(
+        "/dashboard/",
+        headers=professor_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+
+    assert "resumo" in data
+    assert "ultimos_checkins" in data
 
 
 def test_recepcao_acessa_dashboard_completo(
