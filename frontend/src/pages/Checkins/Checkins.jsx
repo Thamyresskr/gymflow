@@ -3,7 +3,7 @@
  * Página de gerenciamento de check-ins.
  *
  * Responsabilidades:
- * - Buscar o histórico de check-ins.
+ * - Buscar o histórico de check-ins conforme o perfil.
  * - Registrar novos check-ins.
  * - Registrar check-out.
  * - Atualizar a lista após operações.
@@ -34,13 +34,23 @@ function Checkins() {
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
+    const role = String(user?.role ?? "").toUpperCase();
+
+    const podeConsultarHistoricoCompleto = [
+        USER_ROLES.ADMIN,
+        USER_ROLES.RECEPCAO,
+    ].includes(role);
+
     /**
-     * Carrega o histórico de check-ins do usuário.
+     * Carrega os check-ins conforme as permissões do perfil.
+     * ADMIN e RECEPCAO consultam o histórico completo.
+     * PROFESSOR e ALUNO consultam apenas o próprio histórico.
      */
     const carregarCheckins = useCallback(async () => {
         if (!user) {
             setCheckins([]);
             setLoading(false);
+            setError(null);
             return;
         }
 
@@ -48,10 +58,9 @@ function Checkins() {
         setError(null);
 
         try {
-            const dados =
-                user.role === USER_ROLES.ALUNO
-                    ? await getMyCheckins()
-                    : await getCheckins();
+            const dados = podeConsultarHistoricoCompleto
+                ? await getCheckins()
+                : await getMyCheckins();
 
             setCheckins(Array.isArray(dados) ? dados : []);
         } catch (err) {
@@ -60,50 +69,11 @@ function Checkins() {
         } finally {
             setLoading(false);
         }
-    }, [user]);
+    }, [user, podeConsultarHistoricoCompleto]);
 
-    /**
-     * Busca os registros quando o usuário estiver disponível.
-     */
     useEffect(() => {
-        if (!user) {
-            return;
-        }
-
-        let active = true;
-
-        async function carregar() {
-            setLoading(true);
-            setError(null);
-
-            try {
-                const dados =
-                    user.role === USER_ROLES.ALUNO
-                        ? await getMyCheckins()
-                        : await getCheckins();
-
-                if (active) {
-                    setCheckins(Array.isArray(dados) ? dados : []);
-                }
-            } catch (err) {
-                console.error("Erro ao carregar check-ins:", err);
-
-                if (active) {
-                    setError(err);
-                }
-            } finally {
-                if (active) {
-                    setLoading(false);
-                }
-            }
-        }
-
-        void carregar();
-
-        return () => {
-            active = false;
-        };
-    }, [user]);
+        void carregarCheckins();
+    }, [carregarCheckins]);
 
     /**
      * Registra um novo check-in.
@@ -129,23 +99,26 @@ function Checkins() {
     /**
      * Registra o check-out.
      */
-    const handleCheckout = useCallback(async (checkinId) => {
-        try {
-            setSubmitting(true);
+    const handleCheckout = useCallback(
+        async (checkinId) => {
+            try {
+                setSubmitting(true);
 
-            await registerCheckout(checkinId);
-            await carregarCheckins();
-        } catch (err) {
-            console.error("Erro ao registrar check-out:", err);
+                await registerCheckout(checkinId);
+                await carregarCheckins();
+            } catch (err) {
+                console.error("Erro ao registrar check-out:", err);
 
-            alert(
-                err.response?.data?.detail ??
-                    "Não foi possível registrar o check-out.",
-            );
-        } finally {
-            setSubmitting(false);
-        }
-    }, [carregarCheckins]);
+                alert(
+                    err.response?.data?.detail ??
+                        "Não foi possível registrar o check-out.",
+                );
+            } finally {
+                setSubmitting(false);
+            }
+        },
+        [carregarCheckins],
+    );
 
     if (loading) {
         return (
