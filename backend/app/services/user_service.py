@@ -1,3 +1,4 @@
+
 """
 Serviços relacionados ao gerenciamento de usuários.
 
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logger import logger
 from app.crud.user import (
+    create_admin_user,
     create_user,
     delete_user,
     get_all_users,
@@ -22,8 +24,9 @@ from app.crud.user import (
     get_user_by_matricula,
     update_user,
 )
-from app.models.user import User
+from app.models.user import TipoUsuario, User
 from app.schemas.user import (
+    AdminUserCreate,
     UserCreate,
     UserResponse,
     UserUpdate,
@@ -36,13 +39,6 @@ def _get_existing_user(
 ) -> User:
     """
     Recupera um usuário existente.
-
-    Args:
-        db: Sessão ativa do banco.
-        user_id: Identificador do usuário.
-
-    Returns:
-        User: Usuário encontrado.
 
     Raises:
         HTTPException: Caso o usuário não exista.
@@ -66,33 +62,25 @@ def _get_existing_user(
     return usuario
 
 
-def register_user(
+def _validate_unique_user_data(
     db: Session,
-    user_data: UserCreate,
-) -> UserResponse:
+    *,
+    email: str,
+    matricula: str | None,
+) -> None:
     """
-    Realiza o cadastro de um novo usuário.
-
-    Args:
-        db: Sessão ativa do banco.
-        user_data: Dados do usuário.
-
-    Returns:
-        UserResponse: Usuário cadastrado.
-
-    Raises:
-        HTTPException: Caso o e-mail ou a matrícula já estejam
-            cadastrados.
+    Valida a unicidade do e-mail e, quando informada,
+    da matrícula.
     """
     usuario_existente = get_user_by_email(
         db=db,
-        email=user_data.email,
+        email=email,
     )
 
     if usuario_existente is not None:
         logger.warning(
             "Tentativa de cadastro com email ja existente | email=%s",
-            user_data.email,
+            email,
         )
 
         raise HTTPException(
@@ -100,11 +88,10 @@ def register_user(
             detail="E-mail já cadastrado.",
         )
 
-    # Matrícula é opcional; só verificar duplicidade quando informada.
-    if user_data.matricula is not None:
+    if matricula is not None:
         matricula_existente = get_user_by_matricula(
             db=db,
-            matricula=user_data.matricula,
+            matricula=matricula,
         )
 
         if matricula_existente is not None:
@@ -117,6 +104,20 @@ def register_user(
                 detail="Matrícula já cadastrada.",
             )
 
+
+def register_user(
+    db: Session,
+    user_data: UserCreate,
+) -> UserResponse:
+    """
+    Cadastra um usuário público com perfil ALUNO.
+    """
+    _validate_unique_user_data(
+        db=db,
+        email=user_data.email,
+        matricula=user_data.matricula,
+    )
+
     try:
         usuario = create_user(
             db=db,
@@ -124,7 +125,6 @@ def register_user(
         )
 
     except IntegrityError as exc:
-        # O CRUD executa rollback antes de relançar o erro.
         logger.warning(
             "Violacao de integridade durante cadastro de usuario."
         )
@@ -146,17 +146,67 @@ def register_user(
     return usuario
 
 
+def register_admin_user(
+    db: Session,
+    user_data: AdminUserCreate,
+) -> UserResponse:
+    """
+    Cadastra um usuário com o perfil definido pelo ADMIN.
+
+    A autorização deve ser verificada pela rota antes
+    de chamar este serviço.
+    """
+    # Proteção adicional: impede criar outro ADMIN
+    # mesmo se a validação do schema for contornada.
+    if user_data.tipo == TipoUsuario.ADMIN:
+        logger.warning(
+            "Tentativa de criar usuario ADMIN pela rota administrativa."
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Não é permitido criar usuários ADMIN por esta rota.",
+        )
+
+    _validate_unique_user_data(
+        db=db,
+        email=user_data.email,
+        matricula=user_data.matricula,
+    )
+
+    try:
+        usuario = create_admin_user(
+            db=db,
+            user_data=user_data,
+        )
+
+    except IntegrityError as exc:
+        logger.warning(
+            "Violacao de integridade no cadastro administrativo."
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "E-mail ou matrícula já cadastrados. "
+                "Verifique os dados informados."
+            ),
+        ) from exc
+
+    logger.info(
+        "Usuario criado administrativamente | id=%s | perfil=%s",
+        usuario.id,
+        usuario.tipo.value,
+    )
+
+    return usuario
+
+
 def list_users(
     db: Session,
 ) -> list[User]:
     """
     Retorna todos os usuários cadastrados.
-
-    Args:
-        db: Sessão ativa do banco.
-
-    Returns:
-        list[User]: Lista de usuários cadastrados.
     """
     return get_all_users(db=db)
 
@@ -167,16 +217,6 @@ def get_user(
 ) -> User:
     """
     Retorna um usuário pelo identificador.
-
-    Args:
-        db: Sessão ativa do banco.
-        user_id: Identificador do usuário.
-
-    Returns:
-        User: Usuário encontrado.
-
-    Raises:
-        HTTPException: Caso o usuário não exista.
     """
     return _get_existing_user(
         db=db,
@@ -191,20 +231,7 @@ def update_user_data(
 ) -> User:
     """
     Atualiza parcialmente os dados de um usuário.
-
-    Apenas os campos enviados serão alterados.
-
-    Args:
-        db: Sessão ativa do banco.
-        user_id: Identificador do usuário.
-        user_data: Dados que serão atualizados.
-
-    Returns:
-        User: Usuário atualizado.
-
-    Raises:
-        HTTPException: Caso o usuário não exista ou os dados
-            violem uma restrição de unicidade ou integridade.
+    O perfil não é alterado por este serviço.
     """
     usuario = _get_existing_user(
         db=db,
@@ -213,7 +240,6 @@ def update_user_data(
 
     dados = user_data.model_dump(exclude_unset=True)
 
-    # Verifica e-mail somente se ele estiver sendo atualizado.
     if "email" in dados:
         usuario_existente = get_user_by_email(
             db=db,
@@ -234,7 +260,6 @@ def update_user_data(
                 detail="E-mail já cadastrado.",
             )
 
-    # A matrícula pode ser nula; verificar apenas quando preenchida.
     if "matricula" in dados and dados["matricula"] is not None:
         matricula_existente = get_user_by_matricula(
             db=db,
@@ -255,11 +280,7 @@ def update_user_data(
             )
 
     for campo, valor in dados.items():
-        setattr(
-            usuario,
-            campo,
-            valor,
-        )
+        setattr(usuario, campo, valor)
 
     try:
         usuario = update_user(
@@ -295,14 +316,6 @@ def remove_user(
 ) -> None:
     """
     Remove um usuário.
-
-    Args:
-        db: Sessão ativa do banco.
-        user_id: Identificador do usuário.
-
-    Raises:
-        HTTPException: Caso o usuário não exista ou a exclusão
-            viole uma restrição de integridade.
     """
     usuario = _get_existing_user(
         db=db,

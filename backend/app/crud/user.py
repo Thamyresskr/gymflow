@@ -1,3 +1,4 @@
+
 """
 Camada de acesso a dados (CRUD) para usuários.
 
@@ -6,6 +7,7 @@ Responsabilidades:
 - Consultar usuários.
 - Atualizar usuários.
 - Remover usuários.
+- Criar usuários com perfil definido pelo ADMIN.
 """
 
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.models.user import TipoUsuario, User
-from app.schemas.user import UserCreate
+from app.schemas.user import AdminUserCreate, UserCreate
 
 
 def get_user_by_id(
@@ -22,13 +24,6 @@ def get_user_by_id(
 ) -> User | None:
     """
     Busca um usuário pelo identificador.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        user_id: Identificador do usuário.
-
-    Returns:
-        User | None: Usuário encontrado ou None.
     """
     return (
         db.query(User)
@@ -43,13 +38,6 @@ def get_user_by_email(
 ) -> User | None:
     """
     Busca um usuário pelo e-mail.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        email: Endereço de e-mail do usuário.
-
-    Returns:
-        User | None: Usuário encontrado ou None.
     """
     return (
         db.query(User)
@@ -64,13 +52,6 @@ def get_user_by_matricula(
 ) -> User | None:
     """
     Busca um usuário pela matrícula.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        matricula: Matrícula do usuário.
-
-    Returns:
-        User | None: Usuário encontrado ou None.
     """
     return (
         db.query(User)
@@ -83,15 +64,7 @@ def get_all_users(
     db: Session,
 ) -> list[User]:
     """
-    Retorna todos os usuários cadastrados.
-
-    Os registros são ordenados alfabeticamente pelo nome.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-
-    Returns:
-        list[User]: Lista de usuários cadastrados.
+    Retorna todos os usuários ordenados pelo nome.
     """
     return (
         db.query(User)
@@ -100,23 +73,31 @@ def get_all_users(
     )
 
 
+def _persist_user(
+    db: Session,
+    user: User,
+) -> User:
+    """
+    Persiste um usuário e desfaz a transação em caso de erro.
+    """
+    try:
+        db.add(user)
+        db.flush()
+        db.commit()
+        db.refresh(user)
+        return user
+
+    except IntegrityError:
+        db.rollback()
+        raise
+
+
 def create_user(
     db: Session,
     user_data: UserCreate,
 ) -> User:
     """
-    Cria um novo usuário com o perfil ALUNO.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        user_data: Dados necessários para criar o usuário.
-
-    Returns:
-        User: Usuário persistido no banco de dados.
-
-    Raises:
-        IntegrityError: Se houver violação de uma restrição
-            de integridade do banco de dados.
+    Cria um usuário público com o perfil ALUNO.
     """
     user = User(
         nome=user_data.nome,
@@ -128,16 +109,30 @@ def create_user(
         ativo=True,
     )
 
-    try:
-        db.add(user)
-        db.flush()
-        db.commit()
-        db.refresh(user)
-        return user
+    return _persist_user(db, user)
 
-    except IntegrityError:
-        db.rollback()
-        raise
+
+def create_admin_user(
+    db: Session,
+    user_data: AdminUserCreate,
+) -> User:
+    """
+    Cria um usuário com o perfil informado no schema administrativo.
+
+    A autorização do solicitante deve ser garantida pela rota
+    administrativa antes de esta função ser chamada.
+    """
+    user = User(
+        nome=user_data.nome,
+        email=user_data.email,
+        senha_hash=hash_password(user_data.senha),
+        tipo=user_data.tipo,
+        matricula=user_data.matricula,
+        telefone=user_data.telefone,
+        ativo=True,
+    )
+
+    return _persist_user(db, user)
 
 
 def update_user(
@@ -146,28 +141,8 @@ def update_user(
 ) -> User:
     """
     Persiste as alterações de um usuário existente.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        user: Instância do usuário com os campos atualizados.
-
-    Returns:
-        User: Usuário atualizado e persistido.
-
-    Raises:
-        IntegrityError: Se houver violação de uma restrição
-            de integridade do banco de dados.
     """
-    try:
-        db.add(user)
-        db.flush()
-        db.commit()
-        db.refresh(user)
-        return user
-
-    except IntegrityError:
-        db.rollback()
-        raise
+    return _persist_user(db, user)
 
 
 def delete_user(
@@ -176,14 +151,6 @@ def delete_user(
 ) -> None:
     """
     Remove um usuário do banco de dados.
-
-    Args:
-        db: Sessão ativa do banco de dados.
-        user: Usuário que será removido.
-
-    Raises:
-        IntegrityError: Se houver violação de uma restrição
-            de integridade durante a exclusão.
     """
     try:
         db.delete(user)

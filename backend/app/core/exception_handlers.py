@@ -1,3 +1,4 @@
+
 """
 Handlers globais de exceções da aplicação.
 """
@@ -8,6 +9,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic_core import to_jsonable_python
 
 from app.core.exceptions import AppException
 from app.core.logger import logger
@@ -41,7 +43,7 @@ def build_error_response(
     )
 
     if errors:
-        response["errors"] = errors
+        response["errors"] = to_jsonable_python(errors)
 
     return response
 
@@ -116,7 +118,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         exc: RequestValidationError,
     ) -> JSONResponse:
         """
-        Trata erros de validação.
+        Trata erros de validação com detalhes compatíveis com JSON.
         """
 
         logger.warning(
@@ -125,6 +127,20 @@ def register_exception_handlers(app: FastAPI) -> None:
             request.url.path,
         )
 
+        # Remove o contexto interno, que pode conter objetos como
+        # ValueError, e converte os valores restantes para JSON.
+        validation_errors = []
+
+        for error in exc.errors():
+            validation_error = {
+                key: value
+                for key, value in error.items()
+                if key != "ctx"
+            }
+            validation_errors.append(validation_error)
+
+        validation_errors = to_jsonable_python(validation_errors)
+
         return JSONResponse(
             status_code=422,
             content=build_error_response(
@@ -132,7 +148,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 code="VALIDATION_ERROR",
                 message="Dados da requisição inválidos.",
                 path=request.url.path,
-                errors=exc.errors(),
+                errors=validation_errors,
             ),
         )
 

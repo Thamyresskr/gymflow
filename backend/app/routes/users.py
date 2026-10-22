@@ -18,6 +18,7 @@ from app.core.dependencies import get_db
 from app.models.user import User
 from app.schemas.error import ErrorResponse
 from app.schemas.user import (
+    AdminUserCreate,
     UserCreate,
     UserResponse,
     UserUpdate,
@@ -25,6 +26,7 @@ from app.schemas.user import (
 from app.services.user_service import (
     get_user,
     list_users,
+    register_admin_user,
     register_user,
     remove_user,
     update_user_data,
@@ -65,7 +67,7 @@ Este endpoint não requer autenticação.
         },
         status.HTTP_409_CONFLICT: {
             "model": ErrorResponse,
-            "description": "E-mail já cadastrado.",
+            "description": "E-mail ou matrícula já cadastrados.",
         },
         status.HTTP_422_UNPROCESSABLE_CONTENT: {
             "model": ErrorResponse,
@@ -84,8 +86,56 @@ def criar_usuario(
     """
     Cadastra um novo usuário com o perfil ALUNO.
     """
-
     return register_user(
+        db=db,
+        user_data=usuario,
+    )
+
+
+# ==========================================================
+# Cadastro administrativo
+# ==========================================================
+
+@router.post(
+    "/admin",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar usuário por perfil",
+    response_description="Usuário criado pelo administrador.",
+    description="""
+Cria um usuário com o perfil especificado.
+
+Requer autenticação e o perfil ADMIN.
+O cadastro público continua restrito ao perfil ALUNO.
+""",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "model": ErrorResponse,
+            "description": "Usuário não autenticado.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Apenas ADMIN pode criar usuários por perfil.",
+        },
+        status.HTTP_409_CONFLICT: {
+            "model": ErrorResponse,
+            "description": "E-mail ou matrícula já cadastrados.",
+        },
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "model": ErrorResponse,
+            "description": "Dados inválidos.",
+        },
+    },
+)
+def criar_usuario_administrativo(
+    usuario: AdminUserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("ADMIN")),
+) -> UserResponse:
+    """
+    Cria um usuário com o perfil selecionado pelo ADMIN.
+    """
+    return register_admin_user(
         db=db,
         user_data=usuario,
     )
@@ -117,10 +167,8 @@ def listar_usuarios(
 ) -> list[UserResponse]:
     """
     Retorna todos os usuários cadastrados.
-
     Requer o perfil ADMIN.
     """
-
     return list_users(db=db)
 
 
@@ -137,7 +185,6 @@ def listar_usuarios(
     ),
     description="""
 Retorna os dados do usuário associado ao token JWT.
-
 Qualquer usuário autenticado pode consultar os próprios dados.
 """,
     responses={
@@ -153,7 +200,6 @@ def obter_usuario_logado(
     """
     Retorna os dados do usuário autenticado.
     """
-
     return current_user
 
 
@@ -188,10 +234,8 @@ def buscar_usuario(
 ) -> UserResponse:
     """
     Busca um usuário pelo identificador.
-
     Requer o perfil ADMIN.
     """
-
     return get_user(
         db=db,
         user_id=user_id,
@@ -222,7 +266,7 @@ def buscar_usuario(
         },
         status.HTTP_409_CONFLICT: {
             "model": ErrorResponse,
-            "description": "E-mail já cadastrado.",
+            "description": "E-mail ou matrícula já cadastrados.",
         },
     },
 )
@@ -234,11 +278,8 @@ def atualizar_usuario(
 ) -> UserResponse:
     """
     Atualiza os dados de um usuário.
-
-    Requer o perfil ADMIN. A alteração do perfil não é
-    disponibilizada por meio do schema público de atualização.
+    A alteração de perfil não é permitida por este schema.
     """
-
     return update_user_data(
         db=db,
         user_id=user_id,
@@ -276,10 +317,8 @@ def excluir_usuario(
 ) -> Response:
     """
     Remove um usuário do sistema.
-
     Requer o perfil ADMIN.
     """
-
     remove_user(
         db=db,
         user_id=user_id,

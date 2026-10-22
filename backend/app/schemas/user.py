@@ -1,5 +1,6 @@
+
 """
-Schemas relacionados aos usuários.
+Schemas relacionados aos usuários do GymFlow.
 """
 
 from datetime import datetime
@@ -11,6 +12,7 @@ from pydantic import (
     EmailStr,
     Field,
     StringConstraints,
+    field_validator,
 )
 
 from app.models.user import TipoUsuario
@@ -55,7 +57,8 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """
-    Dados necessários para o cadastro de um usuário.
+    Dados necessários para o cadastro público de um usuário.
+    O perfil não pode ser escolhido pelo solicitante.
     """
 
     senha: str = Field(
@@ -69,7 +72,7 @@ class UserCreate(UserBase):
     matricula: str | None = Field(
         default=None,
         title="Matrícula",
-        description="Número de matrícula do aluno, quando aplicável.",
+        description="Número de matrícula, quando aplicável.",
         examples=["202600001"],
     )
 
@@ -81,6 +84,58 @@ class UserCreate(UserBase):
                 "telefone": "11987654321",
                 "senha": "Senha@123",
                 "matricula": "202600001",
+            }
+        }
+    )
+
+
+class AdminUserCreate(UserCreate):
+    """
+    Dados utilizados pelo ADMIN para criar usuários
+    com um perfil específico.
+
+    Por segurança, esta rota não permite criar outros ADMINs.
+    """
+
+    tipo: TipoUsuario = Field(
+        ...,
+        title="Perfil",
+        description=(
+            "Perfil atribuído pelo administrador. "
+            "Não é permitido criar usuários ADMIN por esta rota."
+        ),
+        examples=[
+            TipoUsuario.RECEPCAO.value,
+            TipoUsuario.PROFESSOR.value,
+            TipoUsuario.ALUNO.value,
+        ],
+    )
+
+    @field_validator("tipo")
+    @classmethod
+    def impedir_criacao_de_admin(
+        cls,
+        value: TipoUsuario,
+    ) -> TipoUsuario:
+        """
+        Impede a criação de outro administrador por esta rota.
+        """
+        if value == TipoUsuario.ADMIN:
+            raise ValueError(
+                "Não é permitido criar usuários ADMIN por esta rota."
+            )
+
+        return value
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "nome": "Usuário da Recepção",
+                "email": "recepcao@gymflow.com",
+                "telefone": "11987654321",
+                "senha": "Senha@123",
+                "matricula": None,
+                "tipo": TipoUsuario.RECEPCAO.value,
             }
         }
     )
@@ -148,6 +203,7 @@ class UserUpdateBase(BaseModel):
 class UserUpdate(UserUpdateBase):
     """
     Dados utilizados para atualização do usuário.
+    A alteração do perfil não é permitida por este schema.
     """
 
     matricula: str | None = Field(
@@ -211,7 +267,7 @@ class UserResponse(UserBase):
         ...,
         title="Tipo",
         description="Perfil do usuário no sistema.",
-        examples=["ALUNO"],
+        examples=[TipoUsuario.ALUNO.value],
     )
 
     matricula: str | None = Field(
@@ -243,7 +299,7 @@ class UserResponse(UserBase):
                 "nome": "João da Silva",
                 "email": "joao@email.com",
                 "telefone": "11987654321",
-                "tipo": "ALUNO",
+                "tipo": TipoUsuario.ALUNO.value,
                 "matricula": "202600001",
                 "ativo": True,
                 "created_at": "2026-07-25T18:30:00",
