@@ -1,3 +1,4 @@
+
 /**
  * Página inicial da aplicação.
  *
@@ -18,6 +19,38 @@ import {
 
 import DashboardCards from "./components/DashboardCards";
 import styles from "./Dashboard.module.css";
+
+const FUSO_HORARIO = "America/Sao_Paulo";
+
+/**
+ * Formata o horário de um registro para o horário de Brasília.
+ *
+ * Os valores sem indicação de fuso são interpretados como UTC,
+ * conforme a convenção de armazenamento esperada pelo backend.
+ */
+function formatarHorarioBrasilia(valor) {
+    if (!valor) {
+        return "—";
+    }
+
+    const dataComFuso =
+        typeof valor === "string" &&
+        !/(Z|[+-]\d{2}:\d{2})$/i.test(valor)
+            ? `${valor}Z`
+            : valor;
+
+    const data = new Date(dataComFuso);
+
+    if (Number.isNaN(data.getTime())) {
+        return "—";
+    }
+
+    return new Intl.DateTimeFormat("pt-BR", {
+        timeZone: FUSO_HORARIO,
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(data);
+}
 
 function Dashboard() {
     const { user } = useAuthContext();
@@ -119,31 +152,31 @@ function Dashboard() {
 
     const dashboardData = acessoAdministrativo
         ? [
-            {
-                title: "Ocupação Atual",
-                value: resumo.ocupacao_atual ?? 0,
-            },
-            {
-                title: "Check-ins Hoje",
-                value: resumo.checkins_hoje ?? 0,
-            },
-            {
-                title: "Check-outs Hoje",
-                value: resumo.checkouts_hoje ?? 0,
-            },
-            {
-                title: "Tempo Médio",
-                value: `${Number(
-                    resumo.tempo_medio_permanencia ?? 0,
-                ).toFixed(2)} min`,
-            },
-        ]
+              {
+                  title: "Ocupação Atual",
+                  value: resumo.ocupacao_atual ?? 0,
+              },
+              {
+                  title: "Check-ins Hoje",
+                  value: resumo.checkins_hoje ?? 0,
+              },
+              {
+                  title: "Check-outs Hoje",
+                  value: resumo.checkouts_hoje ?? 0,
+              },
+              {
+                  title: "Tempo Médio",
+                  value: `${Number(
+                      resumo.tempo_medio_permanencia ?? 0,
+                  ).toFixed(2)} min`,
+              },
+          ]
         : [
-            {
-                title: "Pessoas na Academia",
-                value: ocupacao?.ocupacao_atual ?? 0,
-            },
-        ];
+              {
+                  title: "Pessoas na Academia",
+                  value: ocupacao?.ocupacao_atual ?? 0,
+              },
+          ];
 
     return (
         <section className={styles.container}>
@@ -170,7 +203,7 @@ function Dashboard() {
                         <div className={styles.tableHeader}>
                             <span>Usuário</span>
                             <span>Status</span>
-                            <span>Horário</span>
+                            <span>Horário (Brasília)</span>
                         </div>
 
                         {ultimosCheckins.length === 0 ? (
@@ -193,14 +226,8 @@ function Dashboard() {
                                     </span>
 
                                     <span>
-                                        {new Date(
+                                        {formatarHorarioBrasilia(
                                             item.entrada,
-                                        ).toLocaleTimeString(
-                                            "pt-BR",
-                                            {
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            },
                                         )}
                                     </span>
                                 </div>

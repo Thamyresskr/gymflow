@@ -7,6 +7,7 @@ Responsabilidades:
 - Delegar as regras de negócio para a camada de serviços.
 - Disponibilizar operações de cadastro, consulta,
   atualização e remoção de equipamentos.
+- Restringir as operações conforme o perfil do usuário.
 """
 
 from fastapi import APIRouter, Depends, Response, status
@@ -42,11 +43,10 @@ router = APIRouter(
     summary="Cadastrar equipamento",
     response_description="Equipamento cadastrado com sucesso.",
     description="""
-Realiza o cadastro de um novo equipamento.
+Cadastra um novo equipamento.
 
 Regras de negócio:
-
-- Apenas usuários ADMIN podem cadastrar equipamentos.
+- Apenas ADMIN pode cadastrar equipamentos.
 - O patrimônio informado deve ser único.
 - O equipamento é criado com status ATIVO por padrão.
 """,
@@ -61,7 +61,7 @@ Regras de negócio:
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para administradores.",
+            "description": "Acesso permitido apenas para ADMIN.",
         },
         status.HTTP_409_CONFLICT: {
             "model": ErrorResponse,
@@ -82,9 +82,7 @@ def criar_equipamento(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("ADMIN")),
 ) -> EquipmentResponse:
-    """
-    Cadastra um novo equipamento.
-    """
+    """Cadastra um equipamento. Requer ADMIN."""
 
     return register_equipment(
         db=db,
@@ -97,6 +95,11 @@ def criar_equipamento(
     response_model=list[EquipmentResponse],
     summary="Listar equipamentos",
     response_description="Lista de equipamentos retornada com sucesso.",
+    description="""
+Retorna todos os equipamentos cadastrados.
+
+Acesso permitido aos perfis ADMIN e RECEPCAO.
+""",
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
@@ -104,17 +107,15 @@ def criar_equipamento(
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para administradores.",
+            "description": "Acesso permitido apenas para ADMIN e RECEPCAO.",
         },
     },
 )
 def listar_equipamentos(
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles("ADMIN")),
+    _: User = Depends(require_roles("ADMIN", "RECEPCAO")),
 ) -> list[EquipmentResponse]:
-    """
-    Retorna todos os equipamentos cadastrados.
-    """
+    """Lista equipamentos. Requer ADMIN ou RECEPCAO."""
 
     return list_equipments(db=db)
 
@@ -124,6 +125,11 @@ def listar_equipamentos(
     response_model=EquipmentResponse,
     summary="Buscar equipamento",
     response_description="Equipamento localizado com sucesso.",
+    description="""
+Busca um equipamento pelo identificador.
+
+Acesso permitido aos perfis ADMIN e RECEPCAO.
+""",
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
@@ -131,7 +137,7 @@ def listar_equipamentos(
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para administradores.",
+            "description": "Acesso permitido apenas para ADMIN e RECEPCAO.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -142,11 +148,9 @@ def listar_equipamentos(
 def buscar_equipamento(
     equipment_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles("ADMIN")),
+    _: User = Depends(require_roles("ADMIN", "RECEPCAO")),
 ) -> EquipmentResponse:
-    """
-    Busca um equipamento pelo identificador.
-    """
+    """Busca equipamento por ID. Requer ADMIN ou RECEPCAO."""
 
     return get_equipment(
         db=db,
@@ -159,6 +163,11 @@ def buscar_equipamento(
     response_model=EquipmentResponse,
     summary="Atualizar equipamento",
     response_description="Equipamento atualizado com sucesso.",
+    description="""
+Atualiza os dados de um equipamento existente.
+
+Acesso permitido exclusivamente ao perfil ADMIN.
+""",
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
@@ -166,7 +175,7 @@ def buscar_equipamento(
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para administradores.",
+            "description": "Acesso permitido apenas para ADMIN.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -176,6 +185,10 @@ def buscar_equipamento(
             "model": ErrorResponse,
             "description": "Patrimônio já cadastrado.",
         },
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ErrorResponse,
+            "description": "Erro de validação.",
+        },
     },
 )
 def atualizar_equipamento(
@@ -184,9 +197,7 @@ def atualizar_equipamento(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("ADMIN")),
 ) -> EquipmentResponse:
-    """
-    Atualiza os dados de um equipamento.
-    """
+    """Atualiza equipamento. Requer ADMIN."""
 
     return update_equipment_data(
         db=db,
@@ -199,6 +210,8 @@ def atualizar_equipamento(
     "/{equipment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Excluir equipamento",
+    response_description="Equipamento excluído com sucesso.",
+    description="Exclui um equipamento. Operação exclusiva do ADMIN.",
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
@@ -206,7 +219,7 @@ def atualizar_equipamento(
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para administradores.",
+            "description": "Acesso permitido apenas para ADMIN.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -219,9 +232,7 @@ def excluir_equipamento(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("ADMIN")),
 ) -> Response:
-    """
-    Remove um equipamento.
-    """
+    """Exclui equipamento. Requer ADMIN."""
 
     remove_equipment(
         db=db,

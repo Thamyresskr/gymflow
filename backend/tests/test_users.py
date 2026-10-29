@@ -39,12 +39,121 @@ def criar_usuario(client):
 # ============================================================================
 
 def test_cadastro_publico_cria_usuario_aluno(client):
-    """
-    O cadastro público deve criar somente usuários ALUNO.
-    """
+    """O cadastro público deve criar somente usuários ALUNO."""
     usuario = criar_usuario(client)
 
     assert usuario["tipo"] == "aluno"
+
+
+def test_cadastro_publico_ignora_perfil_enviado_pelo_cliente(client):
+    """O cadastro público não deve permitir escolher outro perfil."""
+    identificador = uuid4().hex[:8]
+
+    response = client.post(
+        "/users/",
+        json={
+            "nome": f"Aluno Perfil Público {identificador}",
+            "email": f"perfil_publico_{identificador}@gymflow.com",
+            "senha": "Senha@123",
+            "matricula": f"P{identificador}",
+            "telefone": "11999999999",
+            "tipo": "admin",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["tipo"] == "aluno"
+
+
+# ============================================================================
+# Cadastro de alunos pela RECEPÇÃO
+# ============================================================================
+
+def test_recepcao_pode_cadastrar_aluno(
+    client,
+    recepcao_headers,
+):
+    """RECEPCAO deve conseguir cadastrar um aluno."""
+    identificador = uuid4().hex[:8]
+
+    response = client.post(
+        "/users/reception",
+        headers=recepcao_headers,
+        json={
+            "nome": f"Aluno Recepção {identificador}",
+            "email": f"aluno_recepcao_{identificador}@gymflow.com",
+            "senha": "Senha@123",
+            "matricula": f"R{identificador}",
+            "telefone": "11999999999",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["tipo"] == "aluno"
+
+
+def test_recepcao_nao_pode_definir_perfil_ao_cadastrar_aluno(
+    client,
+    recepcao_headers,
+):
+    """A RECEPÇÃO só pode criar ALUNO, mesmo se enviar outro perfil."""
+    identificador = uuid4().hex[:8]
+
+    response = client.post(
+        "/users/reception",
+        headers=recepcao_headers,
+        json={
+            "nome": f"Aluno Perfil Seguro {identificador}",
+            "email": f"perfil_seguro_{identificador}@gymflow.com",
+            "senha": "Senha@123",
+            "matricula": f"S{identificador}",
+            "telefone": "11999999999",
+            "tipo": "admin",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["tipo"] == "aluno"
+
+
+def test_aluno_nao_pode_cadastrar_pela_rota_recepcao(
+    client,
+    auth_headers,
+):
+    """ALUNO não pode utilizar a rota exclusiva da RECEPÇÃO."""
+    identificador = uuid4().hex[:8]
+
+    response = client.post(
+        "/users/reception",
+        headers=auth_headers,
+        json={
+            "nome": f"Aluno Bloqueado {identificador}",
+            "email": f"bloqueado_recepcao_{identificador}@gymflow.com",
+            "senha": "Senha@123",
+            "matricula": f"B{identificador}",
+            "telefone": "11999999999",
+        },
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_anonimo_nao_pode_cadastrar_pela_rota_recepcao(client):
+    """A rota de cadastro da RECEPÇÃO exige autenticação."""
+    identificador = uuid4().hex[:8]
+
+    response = client.post(
+        "/users/reception",
+        json={
+            "nome": f"Aluno Anônimo {identificador}",
+            "email": f"anonimo_recepcao_{identificador}@gymflow.com",
+            "senha": "Senha@123",
+            "matricula": f"A{identificador}",
+            "telefone": "11999999999",
+        },
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 # ============================================================================
@@ -110,7 +219,7 @@ def test_aluno_nao_pode_criar_usuario_por_perfil(
         "/users/admin",
         headers=auth_headers,
         json={
-            "nome": f"Recepção Teste {identificador}",
+            "nome": f"Usuário Bloqueado {identificador}",
             "email": f"bloqueado_{identificador}@gymflow.com",
             "senha": "Senha@123",
             "matricula": None,
@@ -122,16 +231,37 @@ def test_aluno_nao_pode_criar_usuario_por_perfil(
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
-def test_usuario_sem_autenticacao_nao_pode_criar_perfil(
+def test_recepcao_nao_pode_criar_usuarios_por_perfil(
     client,
+    recepcao_headers,
 ):
+    """RECEPCAO não pode usar a rota administrativa."""
+    identificador = uuid4().hex[:8]
+
+    response = client.post(
+        "/users/admin",
+        headers=recepcao_headers,
+        json={
+            "nome": f"Usuário Bloqueado {identificador}",
+            "email": f"bloqueado_admin_{identificador}@gymflow.com",
+            "senha": "Senha@123",
+            "matricula": None,
+            "telefone": "11999999999",
+            "tipo": "professor",
+        },
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_usuario_sem_autenticacao_nao_pode_criar_perfil(client):
     """A rota administrativa exige autenticação."""
     identificador = uuid4().hex[:8]
 
     response = client.post(
         "/users/admin",
         json={
-            "nome": f"Recepção Teste {identificador}",
+            "nome": f"Usuário Anônimo {identificador}",
             "email": f"anonimo_{identificador}@gymflow.com",
             "senha": "Senha@123",
             "matricula": None,
@@ -238,10 +368,7 @@ def test_buscar_usuario_inexistente(
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
-
-    data = response.json()
-
-    assert data["message"] == "Usuário não encontrado."
+    assert response.json()["message"] == "Usuário não encontrado."
 
 
 def test_aluno_nao_pode_buscar_usuario_por_id(
@@ -296,16 +423,11 @@ def test_atualizar_usuario_email_existente(
     response = client.put(
         f"/users/{usuario2['id']}",
         headers=admin_headers,
-        json={
-            "email": usuario1["email"],
-        },
+        json={"email": usuario1["email"]},
     )
 
     assert response.status_code == status.HTTP_409_CONFLICT
-
-    data = response.json()
-
-    assert data["message"] == "E-mail já cadastrado."
+    assert response.json()["message"] == "E-mail já cadastrado."
 
 
 def test_aluno_nao_pode_atualizar_usuario(
@@ -318,9 +440,7 @@ def test_aluno_nao_pode_atualizar_usuario(
     response = client.put(
         f"/users/{usuario['id']}",
         headers=auth_headers,
-        json={
-            "nome": "Tentativa de alteração",
-        },
+        json={"nome": "Tentativa de alteração"},
     )
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -356,10 +476,7 @@ def test_excluir_usuario_inexistente(
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
-
-    data = response.json()
-
-    assert data["message"] == "Usuário não encontrado."
+    assert response.json()["message"] == "Usuário não encontrado."
 
 
 def test_aluno_nao_pode_excluir_usuario(

@@ -1,3 +1,4 @@
+
 /**
  * Barra lateral de navegação da aplicação.
  */
@@ -13,17 +14,17 @@ const MENU_ITEMS = [
     {
         label: "Dashboard",
         path: ROUTES.DASHBOARD,
-        roles: ["ADMIN", "PROFESSOR", "ALUNO"],
+        roles: ["ADMIN", "PROFESSOR", "ALUNO", "RECEPCAO"],
     },
     {
         label: "Check-ins",
         path: ROUTES.CHECKINS,
-        roles: ["ADMIN", "PROFESSOR", "ALUNO"],
+        roles: ["ADMIN", "PROFESSOR", "ALUNO", "RECEPCAO"],
     },
     {
         label: "Equipamentos",
         path: ROUTES.EQUIPMENTS,
-        roles: ["ADMIN", "PROFESSOR"],
+        roles: ["ADMIN", "PROFESSOR", "RECEPCAO"],
     },
     {
         label: "Usuários",
@@ -35,12 +36,14 @@ const MENU_ITEMS = [
 function Sidebar() {
     const { user, logout } = useAuthContext();
 
-    const userRole = (
-        user?.tipo ?? user?.role ?? ""
+    const userRole = String(
+        user?.tipo ?? user?.role ?? "",
     ).toUpperCase();
 
+    const displayName = user?.nome?.trim() || "Usuário";
+
     const menu = MENU_ITEMS.filter((item) =>
-        item.roles.includes(userRole)
+        item.roles.includes(userRole),
     );
 
     return (
@@ -53,8 +56,16 @@ function Sidebar() {
             </div>
 
             <div className="sidebar-user">
-                <strong>{user?.nome ?? "Usuário"}</strong>
-                <span>{user?.tipo ?? user?.role ?? ""}</span>
+                <strong
+                    className="sidebar-user-name"
+                    title={displayName}
+                >
+                    {displayName}
+                </strong>
+
+                <span className="sidebar-user-role">
+                    {userRole}
+                </span>
             </div>
 
             <nav

@@ -8,6 +8,7 @@ Responsabilidades:
 - Disponibilizar operações de cadastro, consulta, atualização
   e remoção de usuários.
 - Restringir operações administrativas ao perfil ADMIN.
+- Permitir à RECEPCAO cadastrar exclusivamente alunos.
 """
 
 from fastapi import APIRouter, Depends, Response, status
@@ -39,26 +40,20 @@ router = APIRouter(
 
 
 # ==========================================================
-# Cadastro público
+# Cadastro público de alunos
 # ==========================================================
 
 @router.post(
     "/",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Cadastrar usuário",
-    response_description="Usuário cadastrado com sucesso.",
+    summary="Cadastrar aluno",
+    response_description="Aluno cadastrado com sucesso.",
     description="""
-Realiza o cadastro público de um novo usuário.
+Realiza o cadastro público de um novo aluno.
 
-Regras:
-- O e-mail informado deve ser único.
-- A senha é armazenada utilizando hash.
-- O usuário é criado com status ativo.
-- O perfil inicial é ALUNO.
-- O perfil não pode ser escolhido pelo solicitante.
-
-Este endpoint não requer autenticação.
+O perfil inicial é ALUNO e não pode ser escolhido
+pelo solicitante. Esta rota não requer autenticação.
 """,
     responses={
         status.HTTP_400_BAD_REQUEST: {
@@ -83,9 +78,54 @@ def criar_usuario(
     usuario: UserCreate,
     db: Session = Depends(get_db),
 ) -> UserResponse:
-    """
-    Cadastra um novo usuário com o perfil ALUNO.
-    """
+    """Cadastra um aluno pelo fluxo público."""
+    return register_user(
+        db=db,
+        user_data=usuario,
+    )
+
+
+# ==========================================================
+# Cadastro de alunos pela RECEPÇÃO
+# ==========================================================
+
+@router.post(
+    "/reception",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Cadastrar aluno pela recepção",
+    response_description="Aluno cadastrado com sucesso.",
+    description="""
+Permite que um usuário autenticado com perfil RECEPCAO
+cadastre exclusivamente alunos.
+
+O perfil não pode ser escolhido pelo solicitante.
+""",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "model": ErrorResponse,
+            "description": "Usuário não autenticado.",
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "model": ErrorResponse,
+            "description": "Apenas RECEPCAO pode utilizar esta rota.",
+        },
+        status.HTTP_409_CONFLICT: {
+            "model": ErrorResponse,
+            "description": "E-mail ou matrícula já cadastrados.",
+        },
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "model": ErrorResponse,
+            "description": "Erro de validação.",
+        },
+    },
+)
+def criar_aluno_recepcao(
+    usuario: UserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("RECEPCAO")),
+) -> UserResponse:
+    """Cadastra um aluno utilizando as regras existentes."""
     return register_user(
         db=db,
         user_data=usuario,
@@ -106,7 +146,7 @@ def criar_usuario(
 Cria um usuário com o perfil especificado.
 
 Requer autenticação e o perfil ADMIN.
-O cadastro público continua restrito ao perfil ALUNO.
+A criação de outro ADMIN é bloqueada pelo schema e pelo serviço.
 """,
     responses={
         status.HTTP_401_UNAUTHORIZED: {
@@ -132,9 +172,7 @@ def criar_usuario_administrativo(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("ADMIN")),
 ) -> UserResponse:
-    """
-    Cria um usuário com o perfil selecionado pelo ADMIN.
-    """
+    """Cria um usuário com o perfil selecionado pelo ADMIN."""
     return register_admin_user(
         db=db,
         user_data=usuario,
@@ -165,10 +203,7 @@ def listar_usuarios(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("ADMIN")),
 ) -> list[UserResponse]:
-    """
-    Retorna todos os usuários cadastrados.
-    Requer o perfil ADMIN.
-    """
+    """Retorna todos os usuários cadastrados. Requer ADMIN."""
     return list_users(db=db)
 
 
@@ -180,13 +215,8 @@ def listar_usuarios(
     "/me",
     response_model=UserResponse,
     summary="Obter usuário autenticado",
-    response_description=(
-        "Dados do usuário autenticado retornados com sucesso."
-    ),
-    description="""
-Retorna os dados do usuário associado ao token JWT.
-Qualquer usuário autenticado pode consultar os próprios dados.
-""",
+    response_description="Dados do usuário autenticado.",
+    description="Retorna os dados do usuário associado ao token JWT.",
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "model": ErrorResponse,
@@ -197,9 +227,7 @@ Qualquer usuário autenticado pode consultar os próprios dados.
 def obter_usuario_logado(
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:
-    """
-    Retorna os dados do usuário autenticado.
-    """
+    """Retorna os dados do usuário autenticado."""
     return current_user
 
 
@@ -232,10 +260,7 @@ def buscar_usuario(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("ADMIN")),
 ) -> UserResponse:
-    """
-    Busca um usuário pelo identificador.
-    Requer o perfil ADMIN.
-    """
+    """Busca um usuário pelo identificador. Requer ADMIN."""
     return get_user(
         db=db,
         user_id=user_id,
@@ -276,10 +301,7 @@ def atualizar_usuario(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("ADMIN")),
 ) -> UserResponse:
-    """
-    Atualiza os dados de um usuário.
-    A alteração de perfil não é permitida por este schema.
-    """
+    """Atualiza os dados de um usuário. Requer ADMIN."""
     return update_user_data(
         db=db,
         user_id=user_id,
@@ -315,10 +337,7 @@ def excluir_usuario(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("ADMIN")),
 ) -> Response:
-    """
-    Remove um usuário do sistema.
-    Requer o perfil ADMIN.
-    """
+    """Remove um usuário. Requer ADMIN."""
     remove_user(
         db=db,
         user_id=user_id,

@@ -1,16 +1,15 @@
+
 """
 Schemas utilizados pelo Dashboard.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DashboardResumo(BaseModel):
-    """
-    Indicadores consolidados do Dashboard.
-    """
+    """Indicadores consolidados do Dashboard."""
 
     ocupacao_atual: int = Field(
         ...,
@@ -57,9 +56,7 @@ class DashboardResumo(BaseModel):
 
 
 class DashboardUltimoCheckin(BaseModel):
-    """
-    Representa um dos últimos check-ins exibidos no Dashboard.
-    """
+    """Representa um dos últimos check-ins exibidos no Dashboard."""
 
     usuario: str = Field(
         ...,
@@ -71,22 +68,28 @@ class DashboardUltimoCheckin(BaseModel):
     entrada: datetime = Field(
         ...,
         title="Entrada",
-        description="Data e hora em que o usuário realizou o check-in.",
+        description="Data e hora do check-in, em UTC.",
         examples=["2026-07-24T08:30:00Z"],
     )
 
     saida: datetime | None = Field(
         default=None,
         title="Saída",
-        description=(
-            "Data e hora do check-out. "
-            "Será nulo enquanto o usuário permanecer na academia."
-        ),
-        examples=[
-            "2026-07-24T09:45:00Z",
-            None,
-        ],
+        description="Data e hora do check-out, em UTC.",
+        examples=["2026-07-24T09:45:00Z", None],
     )
+
+    @field_validator("entrada", "saida", mode="before")
+    @classmethod
+    def normalizar_horario_utc(cls, valor):
+        """Identifica como UTC os datetimes sem fuso retornados pelo SQLite."""
+        if valor is None:
+            return None
+
+        if isinstance(valor, datetime) and valor.tzinfo is None:
+            return valor.replace(tzinfo=timezone.utc)
+
+        return valor
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -101,9 +104,7 @@ class DashboardUltimoCheckin(BaseModel):
 
 
 class DashboardResponse(BaseModel):
-    """
-    Resposta completa do Dashboard.
-    """
+    """Resposta completa do Dashboard."""
 
     resumo: DashboardResumo = Field(
         ...,

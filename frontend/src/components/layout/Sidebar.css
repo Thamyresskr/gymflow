@@ -1,3 +1,4 @@
+
 /**
  * Barra lateral da aplicação.
  */
@@ -7,11 +8,13 @@
     min-width: 260px;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
 
     background-color: var(--color-primary);
     color: #ffffff;
 
-    padding: 2rem 1.5rem;
+    padding: 2rem 1.25rem;
+    box-sizing: border-box;
 
     box-shadow: var(--shadow-md);
 }
@@ -20,7 +23,7 @@
  * Logo
  */
 .sidebar-logo {
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
 }
 
 .sidebar-logo h2 {
@@ -28,6 +31,49 @@
     font-size: 1.6rem;
     font-weight: 700;
     letter-spacing: 0.5px;
+}
+
+/**
+ * Identificação do usuário
+ */
+.sidebar-user {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+
+    padding: 0 0 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.sidebar-user-name {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.4;
+
+    overflow-wrap: anywhere;
+}
+
+.sidebar-user-role {
+    display: block;
+    max-width: 100%;
+
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 /**
@@ -85,6 +131,43 @@
 }
 
 /**
+ * Botão sair
+ */
+.sidebar-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    margin-top: auto;
+    padding: 0.85rem 1rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: var(--radius-md);
+
+    background-color: transparent;
+    color: #ffffff;
+
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    transition:
+        background-color var(--transition),
+        color var(--transition);
+}
+
+.sidebar-logout:hover {
+    background-color: #ffffff;
+    color: var(--color-primary);
+}
+
+.sidebar-logout:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 3px;
+}
+
+/**
  * Responsividade
  */
 @media (max-width: 768px) {
@@ -95,7 +178,11 @@
     }
 
     .sidebar-logo {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .sidebar-user {
+        padding-bottom: 1rem;
     }
 
     .sidebar-nav {
@@ -108,5 +195,9 @@
         justify-content: center;
         flex: 1;
         min-width: 120px;
+    }
+
+    .sidebar-logout {
+        margin-top: 1rem;
     }
 }
