@@ -1,12 +1,13 @@
 
 /**
- * Barra lateral de navegação da aplicação.
+ * Barra lateral de navegação da aplicação GymFlow.
  */
 
 import { NavLink } from "react-router-dom";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 import { ROUTES } from "@/constants/routes";
+import { USER_ROLES } from "@/constants/roles";
 
 import "./Sidebar.css";
 
@@ -14,22 +15,31 @@ const MENU_ITEMS = [
     {
         label: "Dashboard",
         path: ROUTES.DASHBOARD,
-        roles: ["ADMIN", "PROFESSOR", "ALUNO", "RECEPCAO"],
+        roles: Object.values(USER_ROLES),
     },
     {
         label: "Check-ins",
         path: ROUTES.CHECKINS,
-        roles: ["ADMIN", "PROFESSOR", "ALUNO", "RECEPCAO"],
+        roles: Object.values(USER_ROLES),
     },
     {
         label: "Equipamentos",
         path: ROUTES.EQUIPMENTS,
-        roles: ["ADMIN", "PROFESSOR", "RECEPCAO"],
+        roles: [
+            USER_ROLES.ADMIN,
+            USER_ROLES.PROFESSOR,
+            USER_ROLES.RECEPCAO,
+        ],
+    },
+    {
+        label: "Cadastro de Alunos",
+        path: ROUTES.STUDENT_REGISTRATION,
+        roles: [USER_ROLES.RECEPCAO],
     },
     {
         label: "Usuários",
         path: ROUTES.USERS,
-        roles: ["ADMIN"],
+        roles: [USER_ROLES.ADMIN],
     },
 ];
 
@@ -38,7 +48,7 @@ function Sidebar() {
 
     const userRole = String(
         user?.tipo ?? user?.role ?? "",
-    ).toUpperCase();
+    ).trim().toUpperCase();
 
     const displayName = user?.nome?.trim() || "Usuário";
 

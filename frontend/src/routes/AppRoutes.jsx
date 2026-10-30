@@ -1,11 +1,12 @@
+
 /**
  * Configuração das rotas da aplicação GymFlow.
  *
  * Responsabilidades:
- * - Definir todas as rotas.
- * - Separar páginas públicas e privadas.
+ * - Definir rotas públicas e privadas.
  * - Aplicar layouts.
- * - Redirecionamentos.
+ * - Controlar permissões por perfil.
+ * - Gerenciar redirecionamentos.
  */
 
 import {
@@ -19,22 +20,20 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import MainLayout from "@/layouts/MainLayout";
 
 import { ROUTES } from "@/constants/routes";
+import { USER_ROLES } from "@/constants/roles";
 
 import Dashboard from "@/pages/Dashboard/Dashboard";
 import Users from "@/pages/Users/Users";
 import Equipments from "@/pages/Equipments/Equipments";
 import Checkins from "@/pages/Checkins/Checkins";
 import Login from "@/pages/Login/Login";
+import StudentRegistration from "@/pages/StudentRegistration/StudentRegistration";
 
 function AppRoutes() {
     return (
         <BrowserRouter>
             <Routes>
-
-                {/* =========================================================
-                    Rota inicial
-                ========================================================= */}
-
+                {/* Rota inicial */}
                 <Route
                     path={ROUTES.ROOT}
                     element={
@@ -45,57 +44,54 @@ function AppRoutes() {
                     }
                 />
 
-                {/* =========================================================
-                    Rotas públicas
-                ========================================================= */}
-
+                {/* Rota pública */}
                 <Route
                     path={ROUTES.LOGIN}
                     element={<Login />}
                 />
 
-                {/* =========================================================
-                    Rotas protegidas
-                ========================================================= */}
-
+                {/* Rotas protegidas */}
                 <Route element={<ProtectedRoute />}>
                     <Route element={<MainLayout />}>
-
-                        {/* Dashboard */}
 
                         <Route
                             path={ROUTES.DASHBOARD}
                             element={<Dashboard />}
                         />
 
-                        {/* Usuários */}
-
                         <Route
                             path={ROUTES.USERS}
                             element={<Users />}
                         />
-
-                        {/* Equipamentos */}
 
                         <Route
                             path={ROUTES.EQUIPMENTS}
                             element={<Equipments />}
                         />
 
-                        {/* Check-ins */}
-
                         <Route
                             path={ROUTES.CHECKINS}
                             element={<Checkins />}
                         />
 
+                        {/* Cadastro exclusivo da RECEPÇÃO */}
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    roles={[USER_ROLES.RECEPCAO]}
+                                />
+                            }
+                        >
+                            <Route
+                                path={ROUTES.STUDENT_REGISTRATION}
+                                element={<StudentRegistration />}
+                            />
+                        </Route>
+
                     </Route>
                 </Route>
 
-                {/* =========================================================
-                    Rota não encontrada
-                ========================================================= */}
-
+                {/* Rota não encontrada */}
                 <Route
                     path="*"
                     element={
@@ -105,7 +101,6 @@ function AppRoutes() {
                         />
                     }
                 />
-
             </Routes>
         </BrowserRouter>
     );

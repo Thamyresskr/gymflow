@@ -1,3 +1,4 @@
+
 /**
  * Rotas da aplicação GymFlow.
  *
@@ -11,4 +12,5 @@ export const ROUTES = Object.freeze({
     USERS: "/users",
     EQUIPMENTS: "/equipamentos",
     CHECKINS: "/checkins",
+    STUDENT_REGISTRATION: "/cadastro-alunos",
 });
