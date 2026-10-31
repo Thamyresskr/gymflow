@@ -50,31 +50,55 @@ function AppRoutes() {
                     element={<Login />}
                 />
 
-                {/* Rotas protegidas */}
+                {/* Rotas privadas: exigem autenticação */}
                 <Route element={<ProtectedRoute />}>
                     <Route element={<MainLayout />}>
 
+                        {/* Dashboard: todos os perfis autenticados */}
                         <Route
                             path={ROUTES.DASHBOARD}
                             element={<Dashboard />}
                         />
 
-                        <Route
-                            path={ROUTES.USERS}
-                            element={<Users />}
-                        />
-
-                        <Route
-                            path={ROUTES.EQUIPMENTS}
-                            element={<Equipments />}
-                        />
-
+                        {/* Check-ins: todos os perfis autenticados */}
                         <Route
                             path={ROUTES.CHECKINS}
                             element={<Checkins />}
                         />
 
-                        {/* Cadastro exclusivo da RECEPÇÃO */}
+                        {/* Equipamentos: ADMIN, RECEPCAO e PROFESSOR */}
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    roles={[
+                                        USER_ROLES.ADMIN,
+                                        USER_ROLES.RECEPCAO,
+                                        USER_ROLES.PROFESSOR,
+                                    ]}
+                                />
+                            }
+                        >
+                            <Route
+                                path={ROUTES.EQUIPMENTS}
+                                element={<Equipments />}
+                            />
+                        </Route>
+
+                        {/* Usuários: acesso exclusivo do ADMIN */}
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    roles={[USER_ROLES.ADMIN]}
+                                />
+                            }
+                        >
+                            <Route
+                                path={ROUTES.USERS}
+                                element={<Users />}
+                            />
+                        </Route>
+
+                        {/* Cadastro de alunos: acesso exclusivo da RECEPÇÃO */}
                         <Route
                             element={
                                 <ProtectedRoute
