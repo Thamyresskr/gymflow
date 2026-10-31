@@ -1,6 +1,13 @@
 
 """
 Testes das rotas de gerenciamento de equipamentos do GymFlow.
+
+Matriz de permissões:
+- ADMIN: consultar, cadastrar, atualizar e excluir.
+- RECEPCAO: consultar.
+- PROFESSOR: consultar.
+- ALUNO: sem acesso.
+- ANONIMO: sem acesso.
 """
 
 from uuid import uuid4
@@ -66,6 +73,20 @@ def test_recepcao_nao_pode_cadastrar_equipamento(
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
+def test_professor_nao_pode_cadastrar_equipamento(
+    client,
+    professor_headers,
+):
+    """PROFESSOR não pode cadastrar equipamentos."""
+    response = client.post(
+        "/equipments/",
+        headers=professor_headers,
+        json=dados_equipamento(),
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
 def test_aluno_nao_pode_cadastrar_equipamento(client, auth_headers):
     """ALUNO não pode cadastrar equipamentos."""
     response = client.post(
@@ -116,6 +137,24 @@ def test_recepcao_pode_listar_equipamentos(
     response = client.get(
         "/equipments/",
         headers=recepcao_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(response.json(), list)
+    assert len(response.json()) >= 1
+
+
+def test_professor_pode_listar_equipamentos(
+    client,
+    admin_headers,
+    professor_headers,
+):
+    """PROFESSOR pode listar equipamentos."""
+    criar_equipamento(client, admin_headers)
+
+    response = client.get(
+        "/equipments/",
+        headers=professor_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -177,6 +216,23 @@ def test_recepcao_pode_consultar_equipamento(
     assert response.json()["id"] == equipamento["id"]
 
 
+def test_professor_pode_consultar_equipamento(
+    client,
+    admin_headers,
+    professor_headers,
+):
+    """PROFESSOR pode consultar um equipamento pelo ID."""
+    equipamento = criar_equipamento(client, admin_headers)
+
+    response = client.get(
+        f"/equipments/{equipamento['id']}",
+        headers=professor_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["id"] == equipamento["id"]
+
+
 def test_aluno_nao_pode_consultar_equipamento(
     client,
     auth_headers,
@@ -226,6 +282,23 @@ def test_recepcao_nao_pode_atualizar_equipamento(
     response = client.put(
         f"/equipments/{equipamento['id']}",
         headers=recepcao_headers,
+        json={"observacao": "Tentativa não autorizada."},
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_professor_nao_pode_atualizar_equipamento(
+    client,
+    admin_headers,
+    professor_headers,
+):
+    """PROFESSOR não pode atualizar equipamentos."""
+    equipamento = criar_equipamento(client, admin_headers)
+
+    response = client.put(
+        f"/equipments/{equipamento['id']}",
+        headers=professor_headers,
         json={"observacao": "Tentativa não autorizada."},
     )
 
@@ -291,6 +364,22 @@ def test_recepcao_nao_pode_excluir_equipamento(
     response = client.delete(
         f"/equipments/{equipamento['id']}",
         headers=recepcao_headers,
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_professor_nao_pode_excluir_equipamento(
+    client,
+    admin_headers,
+    professor_headers,
+):
+    """PROFESSOR não pode excluir equipamentos."""
+    equipamento = criar_equipamento(client, admin_headers)
+
+    response = client.delete(
+        f"/equipments/{equipamento['id']}",
+        headers=professor_headers,
     )
 
     assert response.status_code == status.HTTP_403_FORBIDDEN

@@ -1,11 +1,12 @@
+
 /**
  * Página de gerenciamento de equipamentos.
  *
  * Responsabilidades:
  * - Listar e pesquisar equipamentos.
  * - Controlar o carregamento dos dados.
- * - Permitir cadastro, edição e exclusão somente
- *   para os perfis ADMIN e PROFESSOR.
+ * - Permitir consulta para ADMIN, PROFESSOR e RECEPCAO.
+ * - Permitir cadastro, edição e exclusão somente para ADMIN.
  * - Integrar com a API.
  */
 
@@ -45,10 +46,15 @@ function Equipments() {
         user?.tipo ?? user?.role ?? ""
     ).toUpperCase();
 
-    const canManageEquipments = [
+    // Perfis autorizados a consultar equipamentos.
+    const canViewEquipments = [
         "ADMIN",
         "PROFESSOR",
+        "RECEPCAO",
     ].includes(userRole);
+
+    // Somente ADMIN pode gerenciar equipamentos.
+    const canManageEquipments = userRole === "ADMIN";
 
     const [equipments, setEquipments] = useState([]);
     const [search, setSearch] = useState("");
@@ -240,6 +246,11 @@ function Equipments() {
                 text="Carregando equipamentos..."
             />
         );
+    }
+
+    // Proteção adicional da página no componente.
+    if (!canViewEquipments) {
+        return null;
     }
 
     return (

@@ -8,6 +8,12 @@ Responsabilidades:
 - Disponibilizar operações de cadastro, consulta,
   atualização e remoção de equipamentos.
 - Restringir as operações conforme o perfil do usuário.
+
+Permissões:
+- ADMIN: consulta, cadastro, atualização e exclusão.
+- RECEPCAO: somente consulta.
+- PROFESSOR: somente consulta.
+- ALUNO: sem acesso.
 """
 
 from fastapi import APIRouter, Depends, Response, status
@@ -36,6 +42,10 @@ router = APIRouter(
 )
 
 
+# ============================================================================
+# Cadastro de equipamentos
+# ============================================================================
+
 @router.post(
     "/",
     response_model=EquipmentResponse,
@@ -61,7 +71,7 @@ Regras de negócio:
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para ADMIN.",
+            "description": "Operação permitida apenas para ADMIN.",
         },
         status.HTTP_409_CONFLICT: {
             "model": ErrorResponse,
@@ -90,6 +100,10 @@ def criar_equipamento(
     )
 
 
+# ============================================================================
+# Consulta e listagem de equipamentos
+# ============================================================================
+
 @router.get(
     "/",
     response_model=list[EquipmentResponse],
@@ -98,7 +112,7 @@ def criar_equipamento(
     description="""
 Retorna todos os equipamentos cadastrados.
 
-Acesso permitido aos perfis ADMIN e RECEPCAO.
+Acesso permitido aos perfis ADMIN, RECEPCAO e PROFESSOR.
 """,
     responses={
         status.HTTP_401_UNAUTHORIZED: {
@@ -107,15 +121,19 @@ Acesso permitido aos perfis ADMIN e RECEPCAO.
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para ADMIN e RECEPCAO.",
+            "description": (
+                "Acesso permitido apenas para ADMIN, RECEPCAO e PROFESSOR."
+            ),
         },
     },
 )
 def listar_equipamentos(
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles("ADMIN", "RECEPCAO")),
+    _: User = Depends(
+        require_roles("ADMIN", "RECEPCAO", "PROFESSOR")
+    ),
 ) -> list[EquipmentResponse]:
-    """Lista equipamentos. Requer ADMIN ou RECEPCAO."""
+    """Lista equipamentos. Requer ADMIN, RECEPCAO ou PROFESSOR."""
 
     return list_equipments(db=db)
 
@@ -128,7 +146,7 @@ def listar_equipamentos(
     description="""
 Busca um equipamento pelo identificador.
 
-Acesso permitido aos perfis ADMIN e RECEPCAO.
+Acesso permitido aos perfis ADMIN, RECEPCAO e PROFESSOR.
 """,
     responses={
         status.HTTP_401_UNAUTHORIZED: {
@@ -137,7 +155,9 @@ Acesso permitido aos perfis ADMIN e RECEPCAO.
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para ADMIN e RECEPCAO.",
+            "description": (
+                "Acesso permitido apenas para ADMIN, RECEPCAO e PROFESSOR."
+            ),
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -148,15 +168,21 @@ Acesso permitido aos perfis ADMIN e RECEPCAO.
 def buscar_equipamento(
     equipment_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles("ADMIN", "RECEPCAO")),
+    _: User = Depends(
+        require_roles("ADMIN", "RECEPCAO", "PROFESSOR")
+    ),
 ) -> EquipmentResponse:
-    """Busca equipamento por ID. Requer ADMIN ou RECEPCAO."""
+    """Busca equipamento por ID. Requer ADMIN, RECEPCAO ou PROFESSOR."""
 
     return get_equipment(
         db=db,
         equipment_id=equipment_id,
     )
 
+
+# ============================================================================
+# Atualização de equipamentos
+# ============================================================================
 
 @router.put(
     "/{equipment_id}",
@@ -175,7 +201,7 @@ Acesso permitido exclusivamente ao perfil ADMIN.
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para ADMIN.",
+            "description": "Operação permitida apenas para ADMIN.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
@@ -206,6 +232,10 @@ def atualizar_equipamento(
     )
 
 
+# ============================================================================
+# Exclusão de equipamentos
+# ============================================================================
+
 @router.delete(
     "/{equipment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -219,7 +249,7 @@ def atualizar_equipamento(
         },
         status.HTTP_403_FORBIDDEN: {
             "model": ErrorResponse,
-            "description": "Acesso permitido apenas para ADMIN.",
+            "description": "Operação permitida apenas para ADMIN.",
         },
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
