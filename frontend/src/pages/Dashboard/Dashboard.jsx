@@ -2,8 +2,8 @@
 /**
  * Página inicial da aplicação.
  *
- * ADMIN e RECEPCAO: indicadores administrativos.
- * ALUNO e PROFESSOR: somente ocupação atual.
+ * ADMIN, RECEPCAO e PROFESSOR: indicadores completos.
+ * ALUNO: somente ocupação atual.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -25,7 +25,7 @@ const FUSO_HORARIO = "America/Sao_Paulo";
 /**
  * Formata o horário de um registro para o horário de Brasília.
  *
- * Os valores sem indicação de fuso são interpretados como UTC,
+ * Valores sem indicação de fuso são interpretados como UTC,
  * conforme a convenção de armazenamento esperada pelo backend.
  */
 function formatarHorarioBrasilia(valor) {
@@ -62,58 +62,85 @@ function Dashboard() {
     const acessoAdministrativo = [
         USER_ROLES.ADMIN,
         USER_ROLES.RECEPCAO,
+        USER_ROLES.PROFESSOR,
     ].includes(tipoUsuario);
 
     const [dashboard, setDashboard] = useState(null);
     const [ocupacao, setOcupacao] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [reloadKey, setReloadKey] = useState(0);
 
-    const carregarDashboard = useCallback(
-        async (isActive = () => true) => {
+    /**
+     * Carrega os indicadores conforme o perfil do usuário.
+     */
+    const carregarDashboard = useCallback(async () => {
+        if (acessoAdministrativo) {
+            return getDashboard();
+        }
+
+        return getOcupacao();
+    }, [acessoAdministrativo]);
+
+    /**
+     * Carregamento inicial e atualização quando o perfil
+     * ou a solicitação de recarga mudar.
+     */
+    useEffect(() => {
+        let active = true;
+
+        async function buscarDados() {
             try {
-                setError(null);
+                const dados = await carregarDashboard();
+
+                if (!active) {
+                    return;
+                }
 
                 if (acessoAdministrativo) {
-                    const dados = await getDashboard();
-
-                    if (isActive()) {
-                        setDashboard(dados);
-                    }
+                    setDashboard(dados);
+                    setOcupacao(null);
                 } else {
-                    const dados = await getOcupacao();
-
-                    if (isActive()) {
-                        setOcupacao(dados);
-                    }
+                    setOcupacao(dados);
+                    setDashboard(null);
                 }
+
+                setError(null);
             } catch (err) {
                 console.error(
                     "Erro ao carregar Dashboard:",
                     err,
                 );
 
-                if (isActive()) {
+                if (active) {
                     setError(err);
                 }
             } finally {
-                if (isActive()) {
+                if (active) {
                     setLoading(false);
                 }
             }
-        },
-        [acessoAdministrativo],
-    );
+        }
 
-    useEffect(() => {
-        let active = true;
-
-        void carregarDashboard(() => active);
+        void buscarDados();
 
         return () => {
             active = false;
         };
-    }, [carregarDashboard]);
+    }, [
+        carregarDashboard,
+        acessoAdministrativo,
+        reloadKey,
+    ]);
+
+    /**
+     * Solicita uma nova consulta dos indicadores.
+     */
+    const handleTentarNovamente = () => {
+        setLoading(true);
+        setError(null);
+        setReloadKey((valorAtual) => valorAtual + 1);
+    };
 
     if (loading) {
         return (
@@ -135,10 +162,7 @@ function Dashboard() {
 
                 <button
                     type="button"
-                    onClick={() => {
-                        setLoading(true);
-                        void carregarDashboard();
-                    }}
+                    onClick={handleTentarNovamente}
                 >
                     Tentar novamente
                 </button>
@@ -147,6 +171,7 @@ function Dashboard() {
     }
 
     const resumo = dashboard?.resumo ?? {};
+
     const ultimosCheckins =
         dashboard?.ultimos_checkins ?? [];
 

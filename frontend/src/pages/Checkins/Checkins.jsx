@@ -3,7 +3,7 @@
  * Página de gerenciamento de check-ins.
  *
  * Responsabilidades:
- * - Buscar o histórico de check-ins conforme o perfil.
+ * - Buscar o histórico conforme o perfil.
  * - Registrar novos check-ins.
  * - Registrar check-out.
  * - Atualizar a lista após operações.
@@ -33,6 +33,7 @@ function Checkins() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
 
     const role = String(user?.role ?? "").toUpperCase();
 
@@ -42,38 +43,72 @@ function Checkins() {
     ].includes(role);
 
     /**
-     * Carrega os check-ins conforme as permissões do perfil.
-     * ADMIN e RECEPCAO consultam o histórico completo.
-     * PROFESSOR e ALUNO consultam apenas o próprio histórico.
+     * Busca os check-ins conforme as permissões do perfil.
      */
-    const carregarCheckins = useCallback(async () => {
+    const buscarCheckins = useCallback(async () => {
         if (!user) {
-            setCheckins([]);
-            setLoading(false);
-            setError(null);
-            return;
+            return [];
         }
 
-        setLoading(true);
-        setError(null);
+        const dados = podeConsultarHistoricoCompleto
+            ? await getCheckins()
+            : await getMyCheckins();
 
-        try {
-            const dados = podeConsultarHistoricoCompleto
-                ? await getCheckins()
-                : await getMyCheckins();
-
-            setCheckins(Array.isArray(dados) ? dados : []);
-        } catch (err) {
-            console.error("Erro ao carregar check-ins:", err);
-            setError(err);
-        } finally {
-            setLoading(false);
-        }
+        return Array.isArray(dados) ? dados : [];
     }, [user, podeConsultarHistoricoCompleto]);
 
+    /**
+     * Atualiza a lista de check-ins.
+     */
+    const atualizarCheckins = useCallback(async () => {
+        const dados = await buscarCheckins();
+
+        setCheckins(dados);
+        setError(null);
+    }, [buscarCheckins]);
+
+    /**
+     * Carregamento inicial e atualização da lista.
+     */
     useEffect(() => {
-        void carregarCheckins();
-    }, [carregarCheckins]);
+        let active = true;
+
+        async function carregarDados() {
+            try {
+                const dados = await buscarCheckins();
+
+                if (active) {
+                    setCheckins(dados);
+                    setError(null);
+                }
+            } catch (err) {
+                console.error("Erro ao carregar check-ins:", err);
+
+                if (active) {
+                    setError(err);
+                }
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        void carregarDados();
+
+        return () => {
+            active = false;
+        };
+    }, [buscarCheckins, reloadKey]);
+
+    /**
+     * Solicita uma nova consulta dos check-ins.
+     */
+    const handleTentarNovamente = () => {
+        setLoading(true);
+        setError(null);
+        setReloadKey((valorAtual) => valorAtual + 1);
+    };
 
     /**
      * Registra um novo check-in.
@@ -83,7 +118,7 @@ function Checkins() {
             setSubmitting(true);
 
             await registerCheckin();
-            await carregarCheckins();
+            await atualizarCheckins();
         } catch (err) {
             console.error("Erro ao registrar check-in:", err);
 
@@ -94,7 +129,7 @@ function Checkins() {
         } finally {
             setSubmitting(false);
         }
-    }, [carregarCheckins]);
+    }, [atualizarCheckins]);
 
     /**
      * Registra o check-out.
@@ -105,7 +140,7 @@ function Checkins() {
                 setSubmitting(true);
 
                 await registerCheckout(checkinId);
-                await carregarCheckins();
+                await atualizarCheckins();
             } catch (err) {
                 console.error("Erro ao registrar check-out:", err);
 
@@ -117,7 +152,7 @@ function Checkins() {
                 setSubmitting(false);
             }
         },
-        [carregarCheckins],
+        [atualizarCheckins],
     );
 
     if (loading) {
@@ -141,7 +176,7 @@ function Checkins() {
                 <button
                     type="button"
                     className={styles.primaryButton}
-                    onClick={carregarCheckins}
+                    onClick={handleTentarNovamente}
                 >
                     Tentar novamente
                 </button>
